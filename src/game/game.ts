@@ -3,6 +3,7 @@ import {
   Scene,
   ArcRotateCamera,
   HemisphericLight,
+  DirectionalLight,
   MeshBuilder,
   StandardMaterial,
   Color3,
@@ -17,6 +18,7 @@ import { WeaponSystem } from './weapon-system';
 import { GemSystem } from './gem-system';
 import { Boss } from './boss';
 import { createRunState, rollChoices, xpForLevel, type RunState, type Upgrade } from './upgrades';
+import { levelUpBurst, bossDeathBurst, hurtBurst } from './effects';
 
 export type GameState = 'running' | 'levelup' | 'dead';
 
@@ -42,10 +44,25 @@ export interface GameStats {
   bossActive: boolean;
   bossHp: number;
   bossMaxHp: number;
+  goldEarned: number;
+}
+
+export interface RunResult {
+  gold: number;
+  kills: number;
+  time: number;
+  level: number;
 }
 
 export interface GameOptions {
   onStats?: (stats: GameStats) => void;
+  onGameOver?: (result: RunResult) => void;
+  /** 角色與永久升級算出的起始數值（範本，每輪複製使用） */
+  startRunState?: RunState;
+  /** 角色身體顏色 */
+  characterColor?: [number, number, number];
+  /** 金幣加成倍率（貪婪） */
+  goldMultiplier?: number;
 }
 
 export interface GameHandle {
@@ -60,10 +77,18 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
 
   const scene = new Scene(engine);
   scene.clearColor = new Color4(0.05, 0.07, 0.13, 1);
+  /** 線性霧增加遠處深度感 */
+  scene.fogMode = Scene.FOGMODE_LINEAR;
+  scene.fogColor = new Color3(0.05, 0.07, 0.13);
+  scene.fogStart = 55;
+  scene.fogEnd = 110;
 
   const camera = new ArcRotateCamera('camera', -Math.PI / 2, Math.PI / 3.2, 50, Vector3.Zero(), scene);
   const light = new HemisphericLight('light', new Vector3(0.4, 1, 0.3), scene);
-  light.intensity = 0.95;
+  light.intensity = 0.85;
+  light.groundColor = new Color3(0.25, 0.28, 0.4);
+  const sun = new DirectionalLight('sun', new Vector3(-0.5, -1, -0.3), scene);
+  sun.intensity = 0.6;
 
   createGround(scene);
   scatterProps(scene);
@@ -75,10 +100,15 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   );
   player.position.set(0, 1, 0);
   const playerMaterial = new StandardMaterial('player-material', scene);
-  playerMaterial.diffuseColor = new Color3(1, 0.95, 0.4);
-  playerMaterial.emissiveColor = new Color3(0.4, 0.35, 0.05);
+  const pc = options.characterColor ?? [1, 0.95, 0.4];
+  playerMaterial.diffuseColor = new Color3(pc[0], pc[1], pc[2]);
+  playerMaterial.emissiveColor = new Color3(pc[0] * 0.3, pc[1] * 0.3, pc[2] * 0.3);
   playerMaterial.specularColor = Color3.Black();
   player.material = playerMaterial;
+  const playerBaseEmissive = playerMaterial.emissiveColor.clone();
+
+  const goldMul = options.goldMultiplier ?? 1;
+  const runTemplate: RunState = options.startRunState ?? createRunState();
 
   const input = new Input();
   input.attach();
@@ -92,7 +122,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   let bossCount = 0;
 
   /** 一輪狀態 */
-  let run: RunState = createRunState();
+  let run: RunState = { ...runTemplate };
   let levels: Record<string, number> = {};
   let level = 1;
   let xp = 0;
@@ -100,6 +130,8 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   let hp = run.maxHp;
   let kills = 0;
   let time = 0;
+  let goldEarned = 0;
+  let hurtTimer = 0;
   let state: GameState = 'running';
   let choices: Upgrade[] = [];
 
@@ -121,6 +153,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     bossActive: false,
     bossHp: 0,
     bossMaxHp: 0,
+    goldEarned: 0,
   };
 
   function pushStats() {
@@ -138,6 +171,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     stats.bossActive = boss.active;
     stats.bossHp = Math.max(0, Math.ceil(boss.hp));
     stats.bossMaxHp = boss.maxHp;
+    stats.goldEarned = goldEarned;
     options.onStats?.(stats);
   }
 
@@ -148,6 +182,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     if (rolled.length === 0) return; // 全滿級，略過暫停
     choices = rolled;
     state = 'levelup';
+    levelUpBurst(scene, player.position);
     pushStats();
   }
 
@@ -184,10 +219,11 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
 
     kills += weapon.update(dt, px, pz, enemies, boss, grid, run, (x, z) => gems.spawn(x, z));
 
-    /** 王被擊敗：噴出大量經驗 */
+    /** 王被擊敗：噴出大量經驗 + 爆炸特效 */
     if (boss.justDied) {
       boss.justDied = false;
       kills += 1;
+      bossDeathBurst(scene, new Vector3(boss.x, 1.5, boss.z));
       for (let n = 0; n < CONFIG.boss.xpGems; n++) {
         const a = Math.random() * Math.PI * 2;
         const d = Math.random() * 3;
@@ -217,12 +253,30 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       if (dx * dx + dz * dz <= contactRange2) touching = true;
     });
     const contactDps = CONFIG.player.contactDps * (1 + time * CONFIG.director.contactGrowthPerSec);
+    const bossTouch = boss.contactsPlayer(px, pz, CONFIG.player.radius);
+    const hurt = touching || bossTouch;
     if (touching) hp -= contactDps * dt;
-    if (boss.contactsPlayer(px, pz, CONFIG.player.radius)) hp -= CONFIG.boss.contactDps * dt;
+    if (bossTouch) hp -= CONFIG.boss.contactDps * dt;
+
+    /** 受擊回饋：身體泛紅 + 間歇火花 */
+    hurtTimer -= dt;
+    if (hurt) {
+      playerMaterial.emissiveColor.set(0.6, 0.1, 0.1);
+      if (hurtTimer <= 0) {
+        hurtTimer = 0.35;
+        hurtBurst(scene, player.position);
+      }
+    } else {
+      playerMaterial.emissiveColor.copyFrom(playerBaseEmissive);
+    }
+
     if (hp <= 0) {
       hp = 0;
+      goldEarned = Math.floor((kills * 0.6 + time) * goldMul);
       state = 'dead';
+      playerMaterial.emissiveColor.copyFrom(playerBaseEmissive);
       pushStats();
+      options.onGameOver?.({ gold: goldEarned, kills, time, level });
     }
 
     time += dt;
@@ -268,7 +322,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       pushStats();
     },
     restart() {
-      run = createRunState();
+      run = { ...runTemplate };
       levels = {};
       level = 1;
       xp = 0;
@@ -276,6 +330,8 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       hp = run.maxHp;
       kills = 0;
       time = 0;
+      goldEarned = 0;
+      hurtTimer = 0;
       choices = [];
       state = 'running';
       player.position.set(0, 1, 0);

@@ -1,0 +1,7 @@
+{
+  // Cloudflare Pages 設定：可直接 `wrangler pages deploy --branch=main`
+  // SPA 轉址由 public/_redirects 處理
+  "name": "animal-survivors",
+  "compatibility_date": "2025-01-01",
+  "pages_build_output_dir": "./dist"
+}

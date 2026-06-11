@@ -18,17 +18,33 @@
       @choose="onChoose"
     />
 
-    <game-over-modal v-if="stats.state === 'dead'" :stats="stats" @restart="onRestart" />
+    <game-over-modal
+      v-if="stats.state === 'dead'"
+      :stats="stats"
+      @restart="onRestart"
+      @menu="emit('menu')"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { createGame, type GameHandle, type GameStats } from '../game/game';
+import { createGame, type GameHandle, type GameStats, type RunResult } from '../game/game';
+import type { RunState } from '../game/upgrades';
 import Hud from './hud.vue';
 import Joystick from './joystick.vue';
 import LevelUpModal from './level-up-modal.vue';
 import GameOverModal from './game-over-modal.vue';
+
+const props = defineProps<{
+  characterColor: [number, number, number];
+  startRunState?: RunState;
+  goldMultiplier: number;
+}>();
+const emit = defineEmits<{
+  (e: 'gameover', result: RunResult): void;
+  (e: 'menu'): void;
+}>();
 
 const canvasRef = ref<HTMLCanvasElement>();
 const stats = reactive<GameStats>({
@@ -46,6 +62,7 @@ const stats = reactive<GameStats>({
   bossActive: false,
   bossHp: 0,
   bossMaxHp: 0,
+  goldEarned: 0,
 });
 
 let game: GameHandle | undefined;
@@ -53,7 +70,11 @@ let game: GameHandle | undefined;
 onMounted(() => {
   if (!canvasRef.value) return;
   game = createGame(canvasRef.value, {
+    startRunState: props.startRunState,
+    characterColor: props.characterColor,
+    goldMultiplier: props.goldMultiplier,
     onStats: (s) => Object.assign(stats, s),
+    onGameOver: (r) => emit('gameover', r),
   });
 });
 

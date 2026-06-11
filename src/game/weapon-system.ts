@@ -11,6 +11,7 @@ import {
 import { CONFIG } from './config';
 import { SpatialGrid } from './spatial-grid';
 import { EnemySystem } from './enemy-system';
+import { Boss } from './boss';
 import { RunState } from './upgrades';
 
 /** 多重彈之間的角度間隔（弧度） */
@@ -115,6 +116,7 @@ export class WeaponSystem {
     playerX: number,
     playerZ: number,
     enemies: EnemySystem,
+    boss: Boss,
     grid: SpatialGrid,
     run: RunState,
     onKill: (x: number, z: number) => void,
@@ -156,6 +158,9 @@ export class WeaponSystem {
           kills++;
           onKill(ex, ez);
         }
+        this.active[i] = 0;
+      } else if (boss.hitTest(this.px[i], this.pz[i], CONFIG.weapon.projectileRadius, run.damage)) {
+        /** 命中王 */
         this.active[i] = 0;
       }
 

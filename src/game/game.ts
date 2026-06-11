@@ -15,6 +15,7 @@ import { SpatialGrid } from './spatial-grid';
 import { EnemySystem } from './enemy-system';
 import { WeaponSystem } from './weapon-system';
 import { GemSystem } from './gem-system';
+import { Boss } from './boss';
 import { createRunState, rollChoices, xpForLevel, type RunState, type Upgrade } from './upgrades';
 
 export type GameState = 'running' | 'levelup' | 'dead';
@@ -38,6 +39,9 @@ export interface GameStats {
   xpToNext: number;
   state: GameState;
   choices: ChoiceView[];
+  bossActive: boolean;
+  bossHp: number;
+  bossMaxHp: number;
 }
 
 export interface GameOptions {
@@ -47,7 +51,6 @@ export interface GameOptions {
 export interface GameHandle {
   dispose: () => void;
   setJoystick: (x: number, z: number) => void;
-  setEnemyCount: (n: number) => void;
   chooseUpgrade: (index: number) => void;
   restart: () => void;
 }
@@ -84,6 +87,9 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   const enemies = new EnemySystem(scene);
   const weapon = new WeaponSystem(scene);
   const gems = new GemSystem(scene);
+  const boss = new Boss(scene);
+  let bossTimer = 0;
+  let bossCount = 0;
 
   /** 一輪狀態 */
   let run: RunState = createRunState();
@@ -112,6 +118,9 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     xpToNext,
     state,
     choices: [],
+    bossActive: false,
+    bossHp: 0,
+    bossMaxHp: 0,
   };
 
   function pushStats() {
@@ -126,6 +135,9 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     stats.xpToNext = xpToNext;
     stats.state = state;
     stats.choices = choices.map((c) => ({ id: c.id, name: c.name, desc: c.desc, emoji: c.emoji }));
+    stats.bossActive = boss.active;
+    stats.bossHp = Math.max(0, Math.ceil(boss.hp));
+    stats.bossMaxHp = boss.maxHp;
     options.onStats?.(stats);
   }
 
@@ -148,11 +160,42 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     const px = player.position.x;
     const pz = player.position.z;
 
+    /** 生成導演：隨時間升壓 */
+    enemies.hpMul = 1 + time * CONFIG.director.hpGrowthPerSec;
+    enemies.speedMul = 1 + time * CONFIG.director.speedGrowthPerSec;
+    enemies.tier = Math.min(1, time / 120);
+    const target = Math.min(
+      CONFIG.director.maxCount,
+      CONFIG.director.baseCount + Math.floor(time / CONFIG.director.stepIntervalSec) * CONFIG.director.addPerStep,
+    );
+    enemies.setCount(target, px, pz);
+
     grid.clear();
     enemies.insertAll(grid);
     enemies.update(dt, px, pz, grid);
 
-    kills += weapon.update(dt, px, pz, enemies, grid, run, (x, z) => gems.spawn(x, z));
+    /** 王：定時出現 */
+    bossTimer += dt;
+    if (!boss.active && bossTimer >= CONFIG.boss.intervalSec) {
+      bossTimer = 0;
+      bossCount += 1;
+      boss.spawn(px, pz, CONFIG.boss.hpBase + CONFIG.boss.hpPerSpawn * (bossCount - 1));
+    }
+
+    kills += weapon.update(dt, px, pz, enemies, boss, grid, run, (x, z) => gems.spawn(x, z));
+
+    /** 王被擊敗：噴出大量經驗 */
+    if (boss.justDied) {
+      boss.justDied = false;
+      kills += 1;
+      for (let n = 0; n < CONFIG.boss.xpGems; n++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = Math.random() * 3;
+        gems.spawn(boss.x + Math.cos(a) * d, boss.z + Math.sin(a) * d);
+      }
+    }
+
+    boss.update(dt, px, pz);
 
     const collected = gems.update(dt, px, pz, run.pickupRadius);
     if (collected > 0) {
@@ -165,7 +208,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       }
     }
 
-    /** 接觸傷害 */
+    /** 接觸傷害（小怪 + 王） */
     let touching = false;
     grid.query(px, pz, (j) => {
       if (touching || !enemies.isAlive(j)) return;
@@ -173,7 +216,9 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       const dz = enemies.getZ(j) - pz;
       if (dx * dx + dz * dz <= contactRange2) touching = true;
     });
-    if (touching) hp -= CONFIG.player.contactDps * dt;
+    const contactDps = CONFIG.player.contactDps * (1 + time * CONFIG.director.contactGrowthPerSec);
+    if (touching) hp -= contactDps * dt;
+    if (boss.contactsPlayer(px, pz, CONFIG.player.radius)) hp -= CONFIG.boss.contactDps * dt;
     if (hp <= 0) {
       hp = 0;
       state = 'dead';
@@ -210,9 +255,6 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     setJoystick(x: number, z: number) {
       input.setJoystick(x, z);
     },
-    setEnemyCount(n: number) {
-      enemies.setCount(n, player.position.x, player.position.z);
-    },
     chooseUpgrade(index: number) {
       if (state !== 'levelup') return;
       const upgrade = choices[index];
@@ -240,6 +282,9 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       enemies.reset(0, 0);
       gems.reset();
       weapon.reset();
+      boss.reset();
+      bossTimer = 0;
+      bossCount = 0;
       pushStats();
     },
   };

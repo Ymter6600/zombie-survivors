@@ -38,22 +38,17 @@
       </div>
     </div>
 
-    <!-- 右上：壓測敵人數 -->
-    <div class="pointer-events-auto absolute top-4 right-4 flex flex-col items-end gap-2 text-white">
-      <div class="rounded-2xl bg-black/40 px-4 py-3 backdrop-blur-md">
-        <div class="mb-1 text-xs font-bold opacity-70">敵人數量（壓測）</div>
-        <div class="flex items-center gap-3">
-          <input
-            type="range"
-            min="0"
-            max="2500"
-            step="100"
-            :value="count"
-            class="w-44 accent-amber-400"
-            @input="onInput"
-          />
-          <span class="w-12 text-right font-black">{{ count }}</span>
-        </div>
+    <!-- 王血條 -->
+    <div
+      v-if="stats.bossActive"
+      class="absolute left-1/2 top-4 w-[min(80vw,32rem)] -translate-x-1/2 text-center text-white"
+    >
+      <div class="mb-1 text-sm font-black tracking-widest text-rose-300">⚠ 航空母雞 ⚠</div>
+      <div class="h-5 overflow-hidden rounded-full bg-black/50 ring-1 ring-rose-400/40 backdrop-blur-md">
+        <div
+          class="h-full bg-gradient-to-r from-rose-600 to-red-400 transition-[width] duration-100"
+          :style="{ width: bossPercent + '%' }"
+        />
       </div>
     </div>
 
@@ -65,13 +60,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import type { GameStats } from '../game/game';
 
 const props = defineProps<{ stats: GameStats }>();
-const emit = defineEmits<{ (e: 'set-count', n: number): void }>();
 
-const count = ref(props.stats.enemies || 600);
+const bossPercent = computed(() =>
+  props.stats.bossMaxHp > 0 ? (props.stats.bossHp / props.stats.bossMaxHp) * 100 : 0,
+);
 
 const hpPercent = computed(() =>
   props.stats.maxHp > 0 ? (props.stats.hp / props.stats.maxHp) * 100 : 0,
@@ -88,10 +84,4 @@ const timeText = computed(() => {
 const fpsClass = computed(() =>
   props.stats.fps >= 55 ? 'text-green-300' : props.stats.fps >= 30 ? 'text-amber-300' : 'text-red-300',
 );
-
-function onInput(e: Event) {
-  const value = Number((e.target as HTMLInputElement).value);
-  count.value = value;
-  emit('set-count', value);
-}
 </script>

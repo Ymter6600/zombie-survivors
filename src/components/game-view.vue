@@ -2,7 +2,7 @@
   <div class="relative w-full h-full overflow-hidden bg-[#0b1020]">
     <canvas ref="canvasRef" class="w-full h-full block outline-none touch-none" />
 
-    <hud :stats="stats" @set-count="onSetCount" />
+    <hud :stats="stats" />
 
     <joystick
       v-show="stats.state === 'running'"
@@ -43,6 +43,9 @@ const stats = reactive<GameStats>({
   xpToNext: 1,
   state: 'running',
   choices: [],
+  bossActive: false,
+  bossHp: 0,
+  bossMaxHp: 0,
 });
 
 let game: GameHandle | undefined;
@@ -61,9 +64,6 @@ function onJoyMove(dir: { x: number; z: number }) {
 }
 function onJoyEnd() {
   game?.setJoystick(0, 0);
-}
-function onSetCount(n: number) {
-  game?.setEnemyCount(n);
 }
 function onChoose(index: number) {
   game?.chooseUpgrade(index);

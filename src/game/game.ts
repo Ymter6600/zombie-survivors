@@ -9,7 +9,9 @@ import {
   Color3,
   Color4,
   Vector3,
+  TransformNode,
 } from '@babylonjs/core';
+import { loadModel } from './model-loader';
 import { CONFIG } from './config';
 import { Input } from './input';
 import { SpatialGrid } from './spatial-grid';
@@ -59,8 +61,10 @@ export interface GameOptions {
   onGameOver?: (result: RunResult) => void;
   /** 角色與永久升級算出的起始數值（範本，每輪複製使用） */
   startRunState?: RunState;
-  /** 角色身體顏色 */
+  /** 角色身體顏色（fallback 造型用） */
   characterColor?: [number, number, number];
+  /** 角色 GLB 模型路徑 */
+  characterModel?: string;
   /** 金幣加成倍率（貪婪） */
   goldMultiplier?: number;
 }
@@ -93,19 +97,33 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   createGround(scene);
   scatterProps(scene);
 
-  const player = MeshBuilder.CreateCapsule(
-    'player',
+  /** 玩家根節點（移動此節點，視覺為其子物件：GLB 或 fallback 膠囊） */
+  const player = new TransformNode('player', scene);
+  player.position.set(0, 0, 0);
+
+  const fallbackBody = MeshBuilder.CreateCapsule(
+    'player-body',
     { radius: CONFIG.player.radius, height: CONFIG.player.radius * 2.4 },
     scene,
   );
-  player.position.set(0, 1, 0);
+  fallbackBody.parent = player;
+  fallbackBody.position.y = CONFIG.player.radius * 1.2;
   const playerMaterial = new StandardMaterial('player-material', scene);
   const pc = options.characterColor ?? [1, 0.95, 0.4];
   playerMaterial.diffuseColor = new Color3(pc[0], pc[1], pc[2]);
   playerMaterial.emissiveColor = new Color3(pc[0] * 0.3, pc[1] * 0.3, pc[2] * 0.3);
   playerMaterial.specularColor = Color3.Black();
-  player.material = playerMaterial;
-  const playerBaseEmissive = playerMaterial.emissiveColor.clone();
+  fallbackBody.material = playerMaterial;
+
+  /** 非同步載入角色模型，成功即取代 fallback（不阻塞遊戲開始） */
+  if (options.characterModel) {
+    void loadModel(scene, options.characterModel, 2.4).then((node) => {
+      if (node) {
+        node.parent = player;
+        fallbackBody.setEnabled(false);
+      }
+    });
+  }
 
   const goldMul = options.goldMultiplier ?? 1;
   const runTemplate: RunState = options.startRunState ?? createRunState();
@@ -182,7 +200,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     if (rolled.length === 0) return; // 全滿級，略過暫停
     choices = rolled;
     state = 'levelup';
-    levelUpBurst(scene, player.position);
+    levelUpBurst(scene, new Vector3(player.position.x, 1, player.position.z));
     pushStats();
   }
 
@@ -190,10 +208,10 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     const dir = input.getDirection();
     player.position.x = clampArena(player.position.x + dir.x * run.moveSpeed * dt);
     player.position.z = clampArena(player.position.z + dir.z * run.moveSpeed * dt);
-    camera.target.copyFrom(player.position);
 
     const px = player.position.x;
     const pz = player.position.z;
+    camera.target.set(px, 1.2, pz);
 
     /** 生成導演：隨時間升壓 */
     enemies.hpMul = 1 + time * CONFIG.director.hpGrowthPerSec;
@@ -258,23 +276,17 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     if (touching) hp -= contactDps * dt;
     if (bossTouch) hp -= CONFIG.boss.contactDps * dt;
 
-    /** 受擊回饋：身體泛紅 + 間歇火花 */
+    /** 受擊回饋：間歇火花 */
     hurtTimer -= dt;
-    if (hurt) {
-      playerMaterial.emissiveColor.set(0.6, 0.1, 0.1);
-      if (hurtTimer <= 0) {
-        hurtTimer = 0.35;
-        hurtBurst(scene, player.position);
-      }
-    } else {
-      playerMaterial.emissiveColor.copyFrom(playerBaseEmissive);
+    if (hurt && hurtTimer <= 0) {
+      hurtTimer = 0.35;
+      hurtBurst(scene, new Vector3(px, 1, pz));
     }
 
     if (hp <= 0) {
       hp = 0;
       goldEarned = Math.floor((kills * 0.6 + time) * goldMul);
       state = 'dead';
-      playerMaterial.emissiveColor.copyFrom(playerBaseEmissive);
       pushStats();
       options.onGameOver?.({ gold: goldEarned, kills, time, level });
     }
@@ -334,7 +346,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       hurtTimer = 0;
       choices = [];
       state = 'running';
-      player.position.set(0, 1, 0);
+      player.position.set(0, 0, 0);
       enemies.reset(0, 0);
       gems.reset();
       weapon.reset();

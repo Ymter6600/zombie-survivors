@@ -3,6 +3,7 @@
   <game-view
     v-else
     :character-color="characterColor"
+    :character-model="characterModel"
     :start-run-state="startRun"
     :gold-multiplier="goldMul"
     @gameover="onGameOver"
@@ -24,11 +25,14 @@ const screen = ref<'menu' | 'game'>('menu');
 
 const startRun = shallowRef<RunState>();
 const characterColor = ref<[number, number, number]>([1, 1, 1]);
+const characterModel = ref<string>();
 const goldMul = ref(1);
 
 function onStart(charId: string) {
+  const ch = getCharacter(charId);
   startRun.value = computeStartRunState(charId, meta.perma);
-  characterColor.value = getCharacter(charId).bodyColor;
+  characterColor.value = ch.bodyColor;
+  characterModel.value = ch.model;
   goldMul.value = goldMultiplier(meta.perma);
   screen.value = 'game';
 }

@@ -1,29 +1,41 @@
-import { Scene, Mesh, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core';
+import { Scene, Mesh, MeshBuilder, StandardMaterial, Color3, TransformNode } from '@babylonjs/core';
 import { CONFIG } from './config';
+import { loadModel } from './model-loader';
 
-/** 王：定時出現的巨型敵人（單一實體，獨立於 instanced 小怪）。之後可換成航空母雞 GLB。 */
+/** 王：定時出現的巨型敵人（單一實體）。視覺為航空母雞 GLB，載入失敗則用球體。 */
 export class Boss {
   active = false;
   hp = 0;
   maxHp = 0;
   x = 0;
   z = 0;
-  /** 本幀剛被擊敗（供遊戲層處理獎勵） */
   justDied = false;
   readonly radius = CONFIG.boss.radius;
 
-  private mesh: Mesh;
+  private root: TransformNode;
+  private fallback: Mesh;
 
   constructor(scene: Scene) {
-    const mesh = MeshBuilder.CreateSphere('boss', { diameter: CONFIG.boss.radius * 2, segments: 14 }, scene);
+    this.root = new TransformNode('boss', scene);
+
+    this.fallback = MeshBuilder.CreateSphere('boss-body', { diameter: CONFIG.boss.radius * 2, segments: 14 }, scene);
+    this.fallback.parent = this.root;
+    this.fallback.position.y = CONFIG.boss.radius;
     const material = new StandardMaterial('boss-material', scene);
     material.diffuseColor = new Color3(0.97, 0.95, 0.9);
     material.emissiveColor = new Color3(0.55, 0.12, 0.12);
     material.specularColor = Color3.Black();
-    mesh.material = material;
-    mesh.position.y = CONFIG.boss.radius;
-    mesh.setEnabled(false);
-    this.mesh = mesh;
+    this.fallback.material = material;
+
+    this.root.setEnabled(false);
+
+    /** 載入航空母雞模型（放大） */
+    void loadModel(scene, '/models/chicken.glb', CONFIG.boss.radius * 2.2).then((node) => {
+      if (node) {
+        node.parent = this.root;
+        this.fallback.setEnabled(false);
+      }
+    });
   }
 
   spawn(playerX: number, playerZ: number, hp: number) {
@@ -34,8 +46,8 @@ export class Boss {
     this.hp = hp;
     this.maxHp = hp;
     this.active = true;
-    this.mesh.position.set(this.x, CONFIG.boss.radius, this.z);
-    this.mesh.setEnabled(true);
+    this.root.position.set(this.x, 0, this.z);
+    this.root.setEnabled(true);
   }
 
   update(dt: number, playerX: number, playerZ: number) {
@@ -45,11 +57,10 @@ export class Boss {
     const len = Math.hypot(dx, dz) || 1;
     this.x += (dx / len) * CONFIG.boss.speed * dt;
     this.z += (dz / len) * CONFIG.boss.speed * dt;
-    this.mesh.position.x = this.x;
-    this.mesh.position.z = this.z;
+    this.root.position.x = this.x;
+    this.root.position.z = this.z;
   }
 
-  /** 投射物命中測試並造成傷害；回傳是否命中 */
   hitTest(px: number, pz: number, hitRadius: number, amount: number): boolean {
     if (!this.active) return false;
     const dx = px - this.x;
@@ -59,7 +70,7 @@ export class Boss {
     this.hp -= amount;
     if (this.hp <= 0) {
       this.active = false;
-      this.mesh.setEnabled(false);
+      this.root.setEnabled(false);
       this.justDied = true;
     }
     return true;
@@ -76,6 +87,6 @@ export class Boss {
   reset() {
     this.active = false;
     this.justDied = false;
-    this.mesh.setEnabled(false);
+    this.root.setEnabled(false);
   }
 }

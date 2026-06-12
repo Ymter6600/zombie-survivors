@@ -38,6 +38,7 @@ import GameOverModal from './game-over-modal.vue';
 
 const props = defineProps<{
   characterColor: [number, number, number];
+  characterModel?: string;
   startRunState?: RunState;
   goldMultiplier: number;
 }>();
@@ -72,6 +73,7 @@ onMounted(() => {
   game = createGame(canvasRef.value, {
     startRunState: props.startRunState,
     characterColor: props.characterColor,
+    characterModel: props.characterModel,
     goldMultiplier: props.goldMultiplier,
     onStats: (s) => Object.assign(stats, s),
     onGameOver: (r) => emit('gameover', r),

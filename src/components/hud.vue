@@ -2,21 +2,22 @@
   <div class="pointer-events-none absolute inset-0 z-10 select-none">
     <!-- 左上：狀態 -->
     <div class="absolute top-4 left-4 flex flex-col gap-2 text-white">
-      <div class="flex items-center gap-3 rounded-2xl bg-black/40 px-4 py-2 backdrop-blur-md">
+      <!-- 標題（手機隱藏，避免與按鈕/王血條重疊） -->
+      <div class="hidden items-center gap-3 rounded-2xl bg-black/40 px-4 py-2 backdrop-blur-md sm:flex">
         <span class="text-3xl font-black tracking-wider">殭屍大逃殺</span>
       </div>
 
-      <div class="flex flex-wrap gap-2 text-sm font-bold">
-        <span class="rounded-xl bg-black/40 px-3 py-1 backdrop-blur-md" :class="fpsClass">
+      <div class="flex flex-wrap gap-1.5 text-xs font-bold sm:gap-2 sm:text-sm">
+        <span class="rounded-xl bg-black/40 px-2 py-1 backdrop-blur-md sm:px-3" :class="fpsClass">
           FPS {{ stats.fps }}
         </span>
-        <span class="rounded-xl bg-black/40 px-3 py-1 backdrop-blur-md">敵人 {{ stats.enemies }}</span>
-        <span class="rounded-xl bg-black/40 px-3 py-1 backdrop-blur-md">擊殺 {{ stats.kills }}</span>
-        <span class="rounded-xl bg-black/40 px-3 py-1 backdrop-blur-md">時間 {{ timeText }}</span>
+        <span class="rounded-xl bg-black/40 px-2 py-1 backdrop-blur-md sm:px-3">敵人 {{ stats.enemies }}</span>
+        <span class="rounded-xl bg-black/40 px-2 py-1 backdrop-blur-md sm:px-3">擊殺 {{ stats.kills }}</span>
+        <span class="rounded-xl bg-black/40 px-2 py-1 backdrop-blur-md sm:px-3">時間 {{ timeText }}</span>
       </div>
 
       <!-- 血量 -->
-      <div class="relative h-5 w-56 overflow-hidden rounded-full bg-black/40 backdrop-blur-md">
+      <div class="relative h-5 w-40 overflow-hidden rounded-full bg-black/40 backdrop-blur-md sm:w-56">
         <div
           class="h-full rounded-full bg-gradient-to-r from-red-500 to-rose-400 transition-[width] duration-100"
           :style="{ width: hpPercent + '%' }"
@@ -31,7 +32,7 @@
         <span class="rounded-lg bg-amber-400/90 px-2 py-0.5 text-sm font-black text-black">
           Lv {{ stats.level }}
         </span>
-        <div class="h-3 w-44 overflow-hidden rounded-full bg-black/40 backdrop-blur-md">
+        <div class="h-3 w-32 overflow-hidden rounded-full bg-black/40 backdrop-blur-md sm:w-44">
           <div
             class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-[width] duration-100"
             :style="{ width: xpPercent + '%' }"
@@ -43,9 +44,9 @@
     <!-- 王血條 -->
     <div
       v-if="stats.bossActive"
-      class="absolute left-1/2 top-4 w-[min(80vw,32rem)] -translate-x-1/2 text-center text-white"
+      class="absolute left-1/2 top-24 w-[min(92vw,32rem)] -translate-x-1/2 text-center text-white sm:top-4 sm:w-[min(80vw,32rem)]"
     >
-      <div class="mb-1 text-sm font-black tracking-widest text-rose-300">
+      <div class="mb-1 text-xs font-black tracking-widest text-rose-300 sm:text-sm">
         ⚠ {{ stats.bossName }} ⚠
         <span class="ml-1 text-amber-300/90">[{{ stats.bossSkill }}]</span>
         <span class="ml-1 text-white/60">{{ stats.bossDefeated + 1 }}/{{ stats.bossTotal }}</span>

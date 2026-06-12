@@ -5,28 +5,28 @@
     <hud :stats="stats" />
 
     <!-- 右上控制：靜音／暫停／技能等級／Debug -->
-    <div v-show="stats.state === 'running'" class="absolute right-4 top-4 z-10 flex items-center gap-2">
+    <div v-show="stats.state === 'running'" class="absolute right-3 top-3 z-10 flex items-center gap-1.5 sm:right-4 sm:top-4 sm:gap-2">
       <button
-        class="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-xl text-white backdrop-blur-md transition hover:bg-black/60 active:scale-95"
+        class="flex h-9 w-9 items-center justify-center rounded-full sm:h-11 sm:w-11 bg-black/40 text-base text-white backdrop-blur-md sm:text-xl transition hover:bg-black/60 active:scale-95"
         @click="onToggleMute"
       >
         {{ muted ? '🔇' : '🔊' }}
       </button>
       <button
-        class="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-xl text-white backdrop-blur-md transition hover:bg-black/60 active:scale-95"
+        class="flex h-9 w-9 items-center justify-center rounded-full sm:h-11 sm:w-11 bg-black/40 text-base text-white backdrop-blur-md sm:text-xl transition hover:bg-black/60 active:scale-95"
         @click="onTogglePause"
       >
         ⏸
       </button>
       <button
-        class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-white backdrop-blur-md transition active:scale-95"
+        class="flex h-9 w-9 items-center justify-center rounded-full sm:h-11 sm:w-11 text-base text-white backdrop-blur-md sm:text-xl transition active:scale-95"
         :class="showStats ? 'bg-cyan-500' : 'bg-black/40 hover:bg-black/60'"
         @click="onToggleStats"
       >
         📊
       </button>
       <button
-        class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-white backdrop-blur-md transition active:scale-95"
+        class="flex h-9 w-9 items-center justify-center rounded-full sm:h-11 sm:w-11 text-base text-white backdrop-blur-md sm:text-xl transition active:scale-95"
         :class="showDebug ? 'bg-fuchsia-500' : 'bg-black/40 hover:bg-black/60'"
         @click="onToggleDebug"
       >

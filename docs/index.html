@@ -59,6 +59,12 @@
   .btn--play { background: linear-gradient(180deg, #8fdc5e, #4a9c2e); border-color: rgba(198,255,122,.5); color: #08210a; }
   .btn--play:hover { background: linear-gradient(180deg, #9fe96e, #58b237); }
 
+  .video-wrap { max-width: 880px; margin: 0 auto; position: relative; aspect-ratio: 16 / 9; }
+  .video-wrap iframe {
+    position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+    border-radius: 18px; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 30px 80px rgba(0,0,0,.55);
+  }
+
   .hero-shot { margin: 50px auto 0; max-width: 880px; }
   .hero-shot img { width: 100%; border-radius: 18px; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 30px 80px rgba(0,0,0,.55); }
 
@@ -119,6 +125,22 @@
     <div class="hero-shot"><img src="assets/shot1.png" alt="殭屍大逃殺 遊戲畫面" loading="lazy" /></div>
   </div>
 </header>
+
+<section>
+  <div class="wrap">
+    <h2>遊玩<span class="dot">影片</span></h2>
+    <p class="lead">實際遊玩畫面搶先看。</p>
+    <div class="video-wrap">
+      <iframe
+        src="https://www.youtube.com/embed/w_0QVCkW9rU"
+        title="殭屍大逃殺 遊玩影片"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen
+      ></iframe>
+    </div>
+  </div>
+</section>
 
 <section>
   <div class="wrap">

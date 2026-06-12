@@ -15,10 +15,48 @@
       </button>
       <button
         class="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-xl text-white backdrop-blur-md transition hover:bg-black/60 active:scale-95"
+        @click="onToggleMute"
+      >
+        {{ muted ? '🔇' : '🔊' }}
+      </button>
+      <button
+        class="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 text-xl text-white backdrop-blur-md transition hover:bg-black/60 active:scale-95"
         @click="onTogglePause"
       >
         ⏸
       </button>
+      <button
+        class="flex h-11 w-11 items-center justify-center rounded-full text-xl text-white backdrop-blur-md transition active:scale-95"
+        :class="showDebug ? 'bg-fuchsia-500' : 'bg-black/40 hover:bg-black/60'"
+        @click="onToggleDebug"
+      >
+        🛠️
+      </button>
+    </div>
+
+    <!-- Debug 參數面板 -->
+    <div
+      v-if="showDebug && stats.state === 'running'"
+      class="absolute right-4 top-20 z-20 max-h-[78vh] w-72 overflow-y-auto rounded-2xl bg-black/75 p-3 text-xs text-white shadow-2xl ring-1 ring-white/10 backdrop-blur-md"
+    >
+      <template v-for="g in debugGroups" :key="g.group">
+        <div class="mb-1 mt-2 text-sm font-black text-fuchsia-300">{{ g.group }}</div>
+        <div v-for="item in g.items" :key="item.index" class="mb-2">
+          <div class="flex justify-between">
+            <span>{{ item.label }}</span>
+            <span class="font-bold text-white/70">{{ fmt(item.value) }}</span>
+          </div>
+          <input
+            type="range"
+            class="w-full accent-fuchsia-400"
+            :min="item.min"
+            :max="item.max"
+            :step="item.step"
+            :value="item.value"
+            @input="onDebugInput(item.index, $event)"
+          />
+        </div>
+      </template>
     </div>
 
     <joystick
@@ -68,8 +106,8 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { createGame, type GameHandle, type GameStats, type RunResult } from '../game/game';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { createGame, type GameHandle, type GameStats, type RunResult, type DebugParamView } from '../game/game';
 import type { RunState } from '../game/upgrades';
 import Hud from './hud.vue';
 import Joystick from './joystick.vue';
@@ -117,6 +155,20 @@ let game: GameHandle | undefined;
 const XP_DEBUG_KEY = 'animal-survivors:xpDebug';
 const xpDebug = ref(localStorage.getItem(XP_DEBUG_KEY) === '1');
 
+const MUTE_KEY = 'animal-survivors:muted';
+const muted = ref(localStorage.getItem(MUTE_KEY) === '1');
+
+const showDebug = ref(false);
+const debugParams = ref<DebugParamView[]>([]);
+const debugGroups = computed(() => {
+  const map = new Map<string, (DebugParamView & { index: number })[]>();
+  debugParams.value.forEach((p, i) => {
+    if (!map.has(p.group)) map.set(p.group, []);
+    map.get(p.group)!.push({ ...p, index: i });
+  });
+  return [...map.entries()].map(([group, items]) => ({ group, items }));
+});
+
 onMounted(() => {
   if (!canvasRef.value) return;
   game = createGame(canvasRef.value, {
@@ -128,6 +180,7 @@ onMounted(() => {
     onGameOver: (r) => emit('gameover', r),
   });
   game.setXpDebug(xpDebug.value);
+  game.setMuted(muted.value);
 });
 
 onBeforeUnmount(() => game?.dispose());
@@ -154,5 +207,22 @@ function onToggleXpDebug() {
   xpDebug.value = !xpDebug.value;
   localStorage.setItem(XP_DEBUG_KEY, xpDebug.value ? '1' : '0');
   game?.setXpDebug(xpDebug.value);
+}
+function onToggleMute() {
+  muted.value = !muted.value;
+  localStorage.setItem(MUTE_KEY, muted.value ? '1' : '0');
+  game?.setMuted(muted.value);
+}
+function onToggleDebug() {
+  showDebug.value = !showDebug.value;
+  if (showDebug.value && game) debugParams.value = game.getDebugParams();
+}
+function onDebugInput(index: number, e: Event) {
+  const v = Number((e.target as HTMLInputElement).value);
+  if (debugParams.value[index]) debugParams.value[index].value = v;
+  game?.setDebugParam(index, v);
+}
+function fmt(v: number) {
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
 }
 </script>

@@ -80,9 +80,9 @@ export const UPGRADES: Upgrade[] = [
   { id: 'xpgain', name: '經驗加成', desc: '經驗獲得 +15%', emoji: '⭐', maxLevel: 5, apply: (s) => (s.xpMultiplier *= 1.15) },
   {
     id: 'orbital',
-    name: '環繞衛星',
-    desc: '召喚環繞身邊的能量球，碰撞傷害敵人；已有則 +1 顆並擴大環繞範圍',
-    emoji: '🛰️',
+    name: '環繞飛斧',
+    desc: '召喚環繞身邊的旋轉斧頭，碰撞傷害敵人；已有則 +1 把並擴大環繞範圍',
+    emoji: '🪓',
     maxLevel: 10,
     apply: (s) => {
       s.orbitalCount += 1;

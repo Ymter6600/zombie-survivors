@@ -90,7 +90,7 @@ export function enemyDeathBurst(scene: Scene, pos: Vector3) {
 }
 
 /** 飄字（增益名稱、回血量）：billboard 文字向上飄並淡出 */
-export function spawnText(scene: Scene, pos: Vector3, text: string, colorHex: string) {
+export function spawnText(scene: Scene, pos: Vector3, text: string, colorHex: string, scale = 1) {
   const width = 512;
   const height = 128;
   const texture = new DynamicTexture('text', { width, height }, scene, false);
@@ -107,7 +107,7 @@ export function spawnText(scene: Scene, pos: Vector3, text: string, colorHex: st
   ctx.fillText(text, width / 2, height / 2);
   texture.update();
 
-  const plane = MeshBuilder.CreatePlane('text-plane', { width: 4, height: 1 }, scene);
+  const plane = MeshBuilder.CreatePlane('text-plane', { width: 4 * scale, height: 1 * scale }, scene);
   plane.billboardMode = Mesh.BILLBOARDMODE_ALL;
   plane.isPickable = false;
   plane.position = new Vector3(pos.x, pos.y + 2.5, pos.z);

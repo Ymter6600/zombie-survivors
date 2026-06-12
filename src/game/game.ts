@@ -16,6 +16,7 @@ import {
 import { loadModel, loadCharacter } from './model-loader';
 import type { AnimationGroup } from '@babylonjs/core';
 import { createTerrain } from './terrain';
+import { scatterGroundDecals, buildRoads } from './ground-decals';
 import { CONFIG } from './config';
 import { Input } from './input';
 import { SpatialGrid } from './spatial-grid';
@@ -94,11 +95,25 @@ export interface GameHandle {
   togglePause: () => void;
   jump: () => void;
   setXpDebug: (on: boolean) => void;
+  setMuted: (on: boolean) => void;
+  setMusicTrack: (i: number) => void;
+  getDebugParams: () => DebugParamView[];
+  setDebugParam: (index: number, value: number) => void;
+}
+
+export interface DebugParamView {
+  label: string;
+  group: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
 }
 
 export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {}): GameHandle {
   const engine = new Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
   sound.enable();
+  sound.startMusic();
 
   const scene = new Scene(engine);
   scene.clearColor = new Color4(0.05, 0.07, 0.13, 1);
@@ -128,6 +143,8 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   sun.intensity = 0.6;
 
   const { heightAt } = createTerrain(scene);
+  void buildRoads(scene, heightAt);
+  scatterGroundDecals(scene, heightAt);
   /** 實心障礙物（隨道具非同步載入逐步填入） */
   const obstacles: Obstacle[] = [];
   void scatterProps(scene, obstacles, heightAt);
@@ -309,7 +326,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       const existing = activeBuffs.find((b) => b.type === def.type);
       if (existing) existing.until = time + CONFIG.items.buffDuration / 1000;
       else activeBuffs.push({ type: def.type, until: time + CONFIG.items.buffDuration / 1000 });
-      spawnText(scene, pos, def.name, def.color);
+      spawnText(scene, pos, def.name, def.color, 10);
       sound.buff();
     } else {
       const amount = run.maxHp * item.healPct;
@@ -616,6 +633,62 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   };
   window.addEventListener('keydown', onKeyDown);
 
+  /** ===== Debug 可調參數 ===== */
+  interface DebugParam {
+    label: string;
+    group: string;
+    min: number;
+    max: number;
+    step: number;
+    get: () => number;
+    set: (v: number) => void;
+  }
+  const cfgParam = (
+    group: string,
+    label: string,
+    min: number,
+    max: number,
+    step: number,
+    get: () => number,
+    set: (v: number) => void,
+  ): DebugParam => ({ group, label, min, max, step, get, set });
+
+  const debugSpec: DebugParam[] = [
+    cfgParam('玩家', '移動速度', 0, 40, 0.5, () => run.moveSpeed, (v) => (run.moveSpeed = v)),
+    cfgParam('玩家', '生命上限', 10, 1000, 10, () => run.maxHp, (v) => (run.maxHp = v)),
+    cfgParam('玩家', '接觸傷害/秒', 0, 100, 1, () => CONFIG.player.contactDps, (v) => (CONFIG.player.contactDps = v)),
+    cfgParam('玩家', '跳躍力', 0, 20, 0.5, () => CONFIG.player.jump.strength, (v) => (CONFIG.player.jump.strength = v)),
+
+    cfgParam('武器', '傷害', 1, 200, 1, () => run.damage, (v) => (run.damage = v)),
+    cfgParam('武器', '發射間隔', 0.05, 2, 0.05, () => run.fireInterval, (v) => (run.fireInterval = v)),
+    cfgParam('武器', '投射物數', 1, 20, 1, () => run.projectileCount, (v) => (run.projectileCount = v)),
+    cfgParam('武器', '射程', 5, 120, 1, () => run.range, (v) => (run.range = v)),
+    cfgParam('武器', '彈速', 5, 120, 1, () => run.projectileSpeed, (v) => (run.projectileSpeed = v)),
+
+    cfgParam('額外武器', '環繞飛斧數', 0, 6, 1, () => run.orbitalCount, (v) => (run.orbitalCount = v)),
+    cfgParam('額外武器', '飛斧傷害', 0, 100, 1, () => run.orbitalDamage, (v) => (run.orbitalDamage = v)),
+    cfgParam('額外武器', '飛斧半徑', 1, 20, 0.5, () => run.orbitalRadius, (v) => (run.orbitalRadius = v)),
+    cfgParam('額外武器', '光環半徑', 0, 30, 1, () => run.auraRadius, (v) => (run.auraRadius = v)),
+    cfgParam('額外武器', '光環傷害', 0, 100, 1, () => run.auraDamage, (v) => (run.auraDamage = v)),
+    cfgParam('額外武器', '閃電連鎖數', 0, 10, 1, () => run.lightningCount, (v) => (run.lightningCount = v)),
+    cfgParam('額外武器', '閃電傷害', 0, 100, 1, () => run.lightningDamage, (v) => (run.lightningDamage = v)),
+    cfgParam('額外武器', '新星半徑', 0, 30, 1, () => run.novaRadius, (v) => (run.novaRadius = v)),
+    cfgParam('額外武器', '新星傷害', 0, 100, 1, () => run.novaDamage, (v) => (run.novaDamage = v)),
+    cfgParam('額外武器', '回力鏢數', 0, 8, 1, () => run.boomerangCount, (v) => (run.boomerangCount = v)),
+    cfgParam('額外武器', '回力鏢傷害', 0, 100, 1, () => run.boomerangDamage, (v) => (run.boomerangDamage = v)),
+
+    cfgParam('怪物', '數量上限', 0, 52, 1, () => CONFIG.director.maxCount, (v) => (CONFIG.director.maxCount = v)),
+    cfgParam('怪物', '初始數量', 0, 52, 1, () => CONFIG.director.baseCount, (v) => (CONFIG.director.baseCount = v)),
+    cfgParam('怪物', '每階增量', 0, 20, 1, () => CONFIG.director.addPerStep, (v) => (CONFIG.director.addPerStep = v)),
+    cfgParam('怪物', '升壓間隔秒', 1, 30, 1, () => CONFIG.director.stepIntervalSec, (v) => (CONFIG.director.stepIntervalSec = v)),
+    cfgParam('怪物', '分離力', 0, 30, 1, () => CONFIG.enemy.separationForce, (v) => (CONFIG.enemy.separationForce = v)),
+
+    cfgParam('王/道具', '王間隔秒', 5, 120, 1, () => CONFIG.boss.intervalSec, (v) => (CONFIG.boss.intervalSec = v)),
+    cfgParam('王/道具', '王基礎血', 50, 5000, 50, () => CONFIG.boss.hpBase, (v) => (CONFIG.boss.hpBase = v)),
+    cfgParam('王/道具', '寶箱間隔ms', 2000, 60000, 1000, () => CONFIG.items.chestInterval, (v) => (CONFIG.items.chestInterval = v)),
+    cfgParam('王/道具', '回血間隔ms', 2000, 60000, 1000, () => CONFIG.items.healInterval, (v) => (CONFIG.items.healInterval = v)),
+  ];
+
   pushStats();
 
   return {
@@ -623,6 +696,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       window.removeEventListener('resize', onResize);
       window.removeEventListener('keydown', onKeyDown);
       input.detach();
+      sound.stopMusic();
       engine.dispose();
     },
     setJoystick(x: number, z: number) {
@@ -687,6 +761,25 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     },
     setXpDebug(on: boolean) {
       xpDebug = on;
+    },
+    setMuted(on: boolean) {
+      sound.setMuted(on);
+    },
+    setMusicTrack(i: number) {
+      sound.setMusicTrack(i);
+    },
+    getDebugParams() {
+      return debugSpec.map((p) => ({
+        label: p.label,
+        group: p.group,
+        min: p.min,
+        max: p.max,
+        step: p.step,
+        value: p.get(),
+      }));
+    },
+    setDebugParam(index: number, value: number) {
+      debugSpec[index]?.set(value);
     },
   };
 }

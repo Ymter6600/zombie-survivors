@@ -26,7 +26,7 @@ const BOSS_DEFS: BossDef[] = [
   {
     name: '巨胖殭屍',
     model: '/models/zombie/zombie_chubby.gltf',
-    radius: 3,
+    radius: 6,
     speed: 6,
     contactDps: 32,
     hpMul: 1,
@@ -37,7 +37,7 @@ const BOSS_DEFS: BossDef[] = [
   {
     name: '狂暴肋骨怪',
     model: '/models/zombie/zombie_ribcage.gltf',
-    radius: 2.4,
+    radius: 4.8,
     speed: 9,
     contactDps: 28,
     hpMul: 0.9,
@@ -48,7 +48,7 @@ const BOSS_DEFS: BossDef[] = [
   {
     name: '斷臂巨怪',
     model: '/models/zombie/zombie_arm.gltf',
-    radius: 3.2,
+    radius: 6.4,
     speed: 5.5,
     contactDps: 34,
     hpMul: 1.3,
@@ -59,7 +59,7 @@ const BOSS_DEFS: BossDef[] = [
   {
     name: '腐毒殭屍',
     model: '/models/zombie/zombie_basic.gltf',
-    radius: 3,
+    radius: 6,
     speed: 7,
     contactDps: 30,
     hpMul: 1.2,
@@ -70,7 +70,7 @@ const BOSS_DEFS: BossDef[] = [
   {
     name: '終極殭屍王',
     model: '/models/zombie/zombie_chubby.gltf',
-    radius: 4,
+    radius: 8,
     speed: 6.5,
     contactDps: 40,
     hpMul: 1.9,

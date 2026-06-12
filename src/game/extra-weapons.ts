@@ -1,4 +1,4 @@
-import { Scene, Mesh, MeshBuilder, StandardMaterial, Color3, Vector3, LinesMesh, TransformNode } from '@babylonjs/core';
+import { Scene, Mesh, MeshBuilder, StandardMaterial, Color3, Vector3, LinesMesh, TransformNode, DynamicTexture } from '@babylonjs/core';
 import { ZombieHorde } from './zombie-horde';
 import { Boss } from './boss';
 import { RunState } from './upgrades';
@@ -91,16 +91,35 @@ export class ExtraWeapons {
     /** 載入長矛模型作為回力鏢 */
     void this.loadBoomerangs(scene);
 
-    /** 光環：貼地的半透明圓盤 */
-    this.aura = MeshBuilder.CreateDisc('aura', { radius: 1, tessellation: 32 }, scene);
+    /** 光環：貼地的發光能量場（程序貼圖 + GlowLayer 泛光） */
+    this.aura = MeshBuilder.CreateDisc('aura', { radius: 1, tessellation: 64 }, scene);
     this.aura.rotation.x = Math.PI / 2;
     this.aura.isPickable = false;
+
+    const auraTex = new DynamicTexture('aura-tex', 256, scene, false);
+    auraTex.hasAlpha = true;
+    const ax = auraTex.getContext() as unknown as CanvasRenderingContext2D;
+    ax.clearRect(0, 0, 256, 256);
+    /** 放射狀：中心淡、近邊緣有一圈亮環、最外圈淡出 */
+    const grad = ax.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0, 'rgba(70,255,140,0.05)');
+    grad.addColorStop(0.55, 'rgba(60,230,120,0.14)');
+    grad.addColorStop(0.82, 'rgba(150,255,170,0.55)');
+    grad.addColorStop(0.95, 'rgba(120,255,150,0.32)');
+    grad.addColorStop(1, 'rgba(120,255,150,0)');
+    ax.fillStyle = grad;
+    ax.beginPath();
+    ax.arc(128, 128, 128, 0, Math.PI * 2);
+    ax.fill();
+    auraTex.update();
+
     this.auraMat = new StandardMaterial('aura-mat', scene);
-    this.auraMat.diffuseColor = new Color3(0.4, 1, 0.5);
-    this.auraMat.emissiveColor = new Color3(0.3, 0.9, 0.4);
+    this.auraMat.emissiveTexture = auraTex;
+    this.auraMat.opacityTexture = auraTex;
+    this.auraMat.emissiveColor = Color3.White();
+    this.auraMat.diffuseColor = Color3.Black();
     this.auraMat.specularColor = Color3.Black();
     this.auraMat.disableLighting = true;
-    this.auraMat.alpha = 0.25;
     this.auraMat.backFaceCulling = false;
     this.aura.material = this.auraMat;
     this.aura.setEnabled(false);
@@ -141,31 +160,22 @@ export class ExtraWeapons {
 
   /** 載入長矛模型，建立回力鏢池（載入失敗則用方塊） */
   private async loadBoomerangs(scene: Scene) {
-    const tmpl = await loadModel(scene, '/models/zombie/weapon_spear.gltf', 0.3);
-    if (tmpl) {
-      /** 套上自發光材質，讓 GlowLayer 泛光（青藍） */
-      const spearMat = new StandardMaterial('spear-glow', scene);
-      spearMat.diffuseColor = new Color3(0.5, 0.9, 1);
-      spearMat.emissiveColor = new Color3(0.3, 0.8, 1);
-      spearMat.specularColor = Color3.Black();
-      spearMat.disableLighting = true;
-      tmpl.getChildMeshes(false).forEach((m) => (m.material = spearMat));
-    }
+    const tmpl = await loadModel(scene, '/models/zombie/weapon_spear.gltf', 1.5);
     for (let i = 0; i < MAX_BOOMERANGS; i++) {
       const holder = new TransformNode(`boomerang-${i}`, scene);
       if (tmpl) {
         const vis = i === 0 ? tmpl : tmpl.clone(`spear-${i}`, null);
         if (vis) {
           vis.parent = holder;
-          vis.position.y = -0.15;
+          vis.position.y = -0.75;
           vis.rotation.z = Math.PI / 2; // 長矛橫躺旋轉
           vis.setEnabled(true);
         }
       } else {
-        const box = MeshBuilder.CreateBox(`boomerang-box-${i}`, { width: 1.4, height: 0.2, depth: 0.2 }, scene);
+        const box = MeshBuilder.CreateBox(`boomerang-box-${i}`, { width: 4, height: 0.5, depth: 0.5 }, scene);
         const m = new StandardMaterial(`boomerang-mat-${i}`, scene);
-        m.emissiveColor = new Color3(0.9, 0.8, 0.4);
-        m.disableLighting = true;
+        m.diffuseColor = new Color3(0.6, 0.6, 0.65);
+        m.specularColor = Color3.Black();
         box.material = m;
         box.parent = holder;
       }
@@ -280,7 +290,7 @@ export class ExtraWeapons {
       const r = run.auraRadius * pulse;
       this.aura.position.set(px, baseY + 0.08, pz);
       this.aura.scaling.set(r, r, r);
-      this.auraMat.alpha = 0.2 + 0.12 * (0.5 + 0.5 * Math.sin(this.auraPhase * 5));
+      this.auraMat.alpha = 0.7 + 0.3 * Math.sin(this.auraPhase * 5);
       if (!this.aura.isEnabled()) this.aura.setEnabled(true);
 
       this.auraTimer += dt;

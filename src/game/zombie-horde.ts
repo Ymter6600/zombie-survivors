@@ -22,6 +22,8 @@ const ZOMBIE_TYPES: ZombieType[] = [
 const BASE_HEIGHT = 2.4;
 /** 每種類型預先 instantiate 的數量（總和為怪海上限） */
 const PER_TYPE = 13;
+/** 怪物血量全域倍率 */
+const HP_SCALE = 0.5;
 /** 受擊白光持續時間（秒） */
 const FLASH_DUR = 0.16;
 const WHITE = new Color3(1, 1, 1);
@@ -130,7 +132,7 @@ export class ZombieHorde {
     this.posX[i] = playerX + Math.cos(angle) * dist;
     this.posZ[i] = playerZ + Math.sin(angle) * dist;
     /** 依 index 對應的類型血量（pool 交錯排列） */
-    this.hp[i] = ZOMBIE_TYPES[i % ZOMBIE_TYPES.length].hp * this.hpMul;
+    this.hp[i] = ZOMBIE_TYPES[i % ZOMBIE_TYPES.length].hp * HP_SCALE * this.hpMul;
     this.hitFlash[i] = 0;
     for (const m of entry.meshes) m.renderOverlay = false;
     entry.root.position.x = this.posX[i];

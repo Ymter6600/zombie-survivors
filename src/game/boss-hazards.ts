@@ -5,15 +5,12 @@ import { Scene, Mesh, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/c
 const PROJ_CAP = 64;
 const PROJ_RADIUS = 0.5;
 const PROJ_LIFE = 4;
-const PROJ_DAMAGE = 12;
 const PROJ_Y = 1.1;
 
-const SHOCK_DAMAGE = 20;
 const SHOCK_DURATION = 0.9;
 const SHOCK_MAX_R = 16;
 const SHOCK_BAND = 1.8;
 
-const POISON_DPS = 16;
 const POISON_DURATION = 5;
 const POISON_RADIUS = 4;
 
@@ -49,6 +46,10 @@ export class BossHazards {
   private poisonMat: StandardMaterial;
   /** 玩家所在地形高度（招式貼地基準） */
   private baseY = 0;
+  /** 招式傷害（debug 可調） */
+  projDamage = 12;
+  shockDamage = 20;
+  poisonDps = 16;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -149,7 +150,7 @@ export class BossHazards {
       const dx = this.px[i] - playerX;
       const dz = this.pz[i] - playerZ;
       if (dx * dx + dz * dz <= hitR2) {
-        damage += PROJ_DAMAGE;
+        damage += this.projDamage;
         this.active[i] = 0;
         this.projMesh[i].setEnabled(false);
         continue;
@@ -172,7 +173,7 @@ export class BossHazards {
       if (!s.hit) {
         const d = Math.hypot(playerX - s.x, playerZ - s.z);
         if (Math.abs(d - r) <= SHOCK_BAND) {
-          damage += SHOCK_DAMAGE;
+          damage += this.shockDamage;
           s.hit = true;
         }
       }
@@ -187,7 +188,7 @@ export class BossHazards {
       const p = this.poisons[i];
       p.t += dt;
       const d2 = (playerX - p.x) ** 2 + (playerZ - p.z) ** 2;
-      if (d2 <= POISON_RADIUS * POISON_RADIUS) damage += POISON_DPS * dt;
+      if (d2 <= POISON_RADIUS * POISON_RADIUS) damage += this.poisonDps * dt;
       if (p.t >= POISON_DURATION) {
         p.mesh.dispose();
         this.poisons.splice(i, 1);

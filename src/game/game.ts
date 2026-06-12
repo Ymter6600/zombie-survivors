@@ -28,7 +28,7 @@ import { Boss, BOSS_COUNT } from './boss';
 import { BossHazards } from './boss-hazards';
 import { BloodDecals } from './decals';
 import { Obstacle, resolveObstacles } from './obstacles';
-import { createRunState, rollChoices, xpForLevel, type RunState, type Upgrade } from './upgrades';
+import { createRunState, rollChoices, xpForLevel, UPGRADES, type RunState, type Upgrade } from './upgrades';
 import { levelUpBurst, bossDeathBurst, hurtBurst, enemyDeathBurst, spawnText, setGlowLayer } from './effects';
 import { sound } from './sound';
 
@@ -99,6 +99,14 @@ export interface GameHandle {
   setMusicTrack: (i: number) => void;
   getDebugParams: () => DebugParamView[];
   setDebugParam: (index: number, value: number) => void;
+  getUpgradeStatus: () => UpgradeStatusView[];
+}
+
+export interface UpgradeStatusView {
+  name: string;
+  emoji: string;
+  level: number;
+  maxLevel: number;
 }
 
 export interface DebugParamView {
@@ -235,6 +243,8 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   let time = 0;
   let goldEarned = 0;
   let hurtTimer = 0;
+  /** 受傷飄字用：兩次回饋之間累計的扣血量 */
+  let dmgAccum = 0;
   let state: GameState = 'running';
   let choices: Upgrade[] = [];
 
@@ -551,7 +561,10 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     boss.update(dt, px, pz, obstacles, hazards);
     /** 王招式對玩家造成的傷害（彈幕／震波／毒池，無視騰空） */
     const hazardDmg = hazards.update(dt, px, pz, groundY);
-    if (hazardDmg > 0 && !invincible) hp -= hazardDmg;
+    if (hazardDmg > 0 && !invincible) {
+      hp -= hazardDmg;
+      dmgAccum += hazardDmg;
+    }
 
     /** 道具：每 15 秒生成寶箱與回血，並更新拾取 */
     chestTimer += dt;
@@ -568,7 +581,8 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
 
     const collected = gems.update(dt, px, pz, eff.pickupRadius);
     if (collected > 0) {
-      xp += collected * eff.xpMultiplier * (xpDebug ? 10 : 1);
+      /** 每顆寶石基礎經驗（預設 4） */
+      xp += collected * 4 * eff.xpMultiplier * (xpDebug ? 10 : 1);
       if (xp >= xpToNext) {
         xp -= xpToNext;
         level += 1;
@@ -589,15 +603,25 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     const bossTouch = boss.contactsPlayer(px, pz, CONFIG.player.radius);
     /** 騰空時可躲開接觸傷害 */
     const hurt = (touching || bossTouch) && !airborne;
-    if (touching && !airborne && !invincible) hp -= contactDps * dt;
-    if (bossTouch && !airborne && !invincible) hp -= boss.contactDps * dt;
+    if (touching && !airborne && !invincible) {
+      const d = contactDps * dt;
+      hp -= d;
+      dmgAccum += d;
+    }
+    if (bossTouch && !airborne && !invincible) {
+      const d = boss.contactDps * dt;
+      hp -= d;
+      dmgAccum += d;
+    }
 
-    /** 受擊回饋：間歇火花（含王招式傷害） */
+    /** 受擊回饋：間歇火花 + 頭上飄出扣血數字 */
     hurtTimer -= dt;
     if ((hurt || hazardDmg > 0) && hurtTimer <= 0) {
       hurtTimer = 0.35;
       hurtBurst(scene, new Vector3(px, groundY + 1, pz));
       sound.hurt();
+      if (dmgAccum >= 1) spawnText(scene, new Vector3(px, groundY + 2.2, pz), `-${Math.round(dmgAccum)}`, '#ff5a5a', 2);
+      dmgAccum = 0;
     }
 
     if (hp <= 0) {
@@ -715,6 +739,10 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     cfgParam('王/道具', '王基礎血', 50, 5000, 50, () => CONFIG.boss.hpBase, (v) => (CONFIG.boss.hpBase = v)),
     cfgParam('王/道具', '寶箱間隔ms', 2000, 60000, 1000, () => CONFIG.items.chestInterval, (v) => (CONFIG.items.chestInterval = v)),
     cfgParam('王/道具', '回血間隔ms', 2000, 60000, 1000, () => CONFIG.items.healInterval, (v) => (CONFIG.items.healInterval = v)),
+
+    cfgParam('王招式', '彈幕傷害', 0, 100, 1, () => hazards.projDamage, (v) => (hazards.projDamage = v)),
+    cfgParam('王招式', '震波傷害', 0, 100, 1, () => hazards.shockDamage, (v) => (hazards.shockDamage = v)),
+    cfgParam('王招式', '毒池傷害/秒', 0, 100, 1, () => hazards.poisonDps, (v) => (hazards.poisonDps = v)),
   ];
 
   pushStats();
@@ -809,6 +837,14 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     },
     setDebugParam(index: number, value: number) {
       debugSpec[index]?.set(value);
+    },
+    getUpgradeStatus() {
+      return UPGRADES.map((u) => ({
+        name: u.name,
+        emoji: u.emoji,
+        level: levels[u.id] ?? 0,
+        maxLevel: u.maxLevel,
+      }));
     },
   };
 }

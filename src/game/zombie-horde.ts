@@ -53,6 +53,8 @@ export class ZombieHorde {
   /** 受擊回饋計時（>0 時縮放彈跳） */
   private hitFlash: Float32Array;
   private capacity = ZOMBIE_TYPES.length * PER_TYPE;
+  /** 地形高度查詢（貼地用） */
+  private heightAt: (x: number, z: number) => number = () => 0;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -106,6 +108,10 @@ export class ZombieHorde {
     this.ready = true;
   }
 
+  setHeightFn(fn: (x: number, z: number) => number) {
+    this.heightAt = fn;
+  }
+
   private normalize(root: TransformNode, targetHeight: number) {
     const { min, max } = root.getHierarchyBoundingVectors();
     const h = max.y - min.y || 1;
@@ -129,6 +135,7 @@ export class ZombieHorde {
     for (const m of entry.meshes) m.renderOverlay = false;
     entry.root.position.x = this.posX[i];
     entry.root.position.z = this.posZ[i];
+    entry.root.position.y = this.heightAt(this.posX[i], this.posZ[i]);
     entry.root.setEnabled(true);
     entry.anim?.start(true, 0.8 + Math.random() * 0.4);
   }
@@ -238,6 +245,7 @@ export class ZombieHorde {
       const root = this.pool[i].root;
       root.position.x = nx;
       root.position.z = nz;
+      root.position.y = this.heightAt(nx, nz);
       /** 面向玩家（模型前方 +Z） */
       root.rotation.y = Math.atan2(dirX, dirZ);
 

@@ -45,7 +45,8 @@ export class WeaponSystem {
   private readonly rotQ = new Quaternion();
   private readonly posV = new Vector3();
   private readonly mat = new Matrix();
-  private readonly y = 1;
+  /** 子彈飛行高度（依玩家所在地形高度 + 1） */
+  private y = 1;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -167,7 +168,9 @@ export class WeaponSystem {
     grid: SpatialGrid,
     run: RunState,
     onKill: (x: number, z: number) => void,
+    baseY: number,
   ): number {
+    this.y = baseY + 1;
     this.timer += dt;
     while (this.timer >= run.fireInterval) {
       this.timer -= run.fireInterval;

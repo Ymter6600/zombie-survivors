@@ -59,11 +59,11 @@ export class BloodDecals {
     this.ready = this.pool.length > 0;
   }
 
-  spawn(x: number, z: number) {
+  spawn(x: number, z: number, y = 0.03) {
     if (!this.ready) return;
     const node = this.pool[this.cursor];
     this.cursor = (this.cursor + 1) % this.pool.length;
-    node.position.set(x, 0.03, z);
+    node.position.set(x, y, z);
     node.rotation.y = Math.random() * Math.PI * 2;
     node.setEnabled(true);
   }

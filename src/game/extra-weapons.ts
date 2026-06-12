@@ -58,6 +58,8 @@ export class ExtraWeapons {
 
   private boomerangTimer = 0;
   private boomerangReady = false;
+  /** 玩家所在地形高度（各效果貼地基準） */
+  private baseY = 0;
   private boomerangs: {
     node: TransformNode;
     active: boolean;
@@ -220,7 +222,9 @@ export class ExtraWeapons {
     boss: Boss,
     run: RunState,
     onKill: (x: number, z: number) => void,
+    baseY: number,
   ): number {
+    this.baseY = baseY;
     let kills = 0;
 
     /** ===== 環繞衛星 ===== */
@@ -233,7 +237,7 @@ export class ExtraWeapons {
         continue;
       }
       const a = this.angle + (i / n) * Math.PI * 2;
-      orb.position.set(px + Math.cos(a) * run.orbitalRadius, ORB_Y, pz + Math.sin(a) * run.orbitalRadius);
+      orb.position.set(px + Math.cos(a) * run.orbitalRadius, baseY + ORB_Y, pz + Math.sin(a) * run.orbitalRadius);
       orb.rotation.y += dt * 10; // 武器自轉
       if (!orb.isEnabled()) orb.setEnabled(true);
     }
@@ -263,7 +267,7 @@ export class ExtraWeapons {
             }
           }
           /** 每顆球每次結算最多噴一次火花，避免過量 */
-          if (orbHit) hitSpark(this.scene, new Vector3(ox, ORB_Y, oz));
+          if (orbHit) hitSpark(this.scene, new Vector3(ox, baseY + ORB_Y, oz));
           boss.hitTest(ox, oz, ORB_RADIUS, run.orbitalDamage);
         }
       }
@@ -274,7 +278,7 @@ export class ExtraWeapons {
       this.auraPhase += dt;
       const pulse = 1 + 0.05 * Math.sin(this.auraPhase * 5);
       const r = run.auraRadius * pulse;
-      this.aura.position.set(px, 0.08, pz);
+      this.aura.position.set(px, baseY + 0.08, pz);
       this.aura.scaling.set(r, r, r);
       this.auraMat.alpha = 0.2 + 0.12 * (0.5 + 0.5 * Math.sin(this.auraPhase * 5));
       if (!this.aura.isEnabled()) this.aura.setEnabled(true);
@@ -335,7 +339,7 @@ export class ExtraWeapons {
         const ring = MeshBuilder.CreateTorus('nova', { diameter: 2, thickness: 0.5, tessellation: 40 }, this.scene);
         ring.material = this.novaMat;
         ring.isPickable = false;
-        ring.position.set(px, 0.3, pz);
+        ring.position.set(px, baseY + 0.3, pz);
         this.novaFx.push({ mesh: ring, t: 0, r: run.novaRadius });
       }
     }
@@ -363,7 +367,7 @@ export class ExtraWeapons {
         const dist = Math.sin(frac * Math.PI) * BOOMERANG_DIST;
         const bx = px + b.dirX * dist;
         const bz = pz + b.dirZ * dist;
-        b.node.position.set(bx, BOOMERANG_Y, bz);
+        b.node.position.set(bx, baseY + BOOMERANG_Y, bz);
         b.node.rotation.y += dt * BOOMERANG_SPIN;
 
         let any = false;
@@ -382,7 +386,7 @@ export class ExtraWeapons {
             }
           }
         }
-        if (any) hitSpark(this.scene, new Vector3(bx, BOOMERANG_Y, bz));
+        if (any) hitSpark(this.scene, new Vector3(bx, baseY + BOOMERANG_Y, bz));
         if (!b.bossHit && boss.hitTest(bx, bz, BOOMERANG_HITR, run.boomerangDamage)) b.bossHit = true;
       }
     }
@@ -401,8 +405,9 @@ export class ExtraWeapons {
     onKill: (x: number, z: number) => void,
   ): number {
     let kills = 0;
+    const fxY = this.baseY + FX_Y;
     const hit = new Set<number>();
-    const points: Vector3[] = [new Vector3(px, FX_Y, pz)];
+    const points: Vector3[] = [new Vector3(px, fxY, pz)];
     let fromX = px;
     let fromZ = pz;
 
@@ -423,8 +428,8 @@ export class ExtraWeapons {
       hit.add(best);
       const ex = enemies.getX(best);
       const ez = enemies.getZ(best);
-      points.push(new Vector3(ex, FX_Y, ez));
-      hitSpark(this.scene, new Vector3(ex, FX_Y, ez));
+      points.push(new Vector3(ex, fxY, ez));
+      hitSpark(this.scene, new Vector3(ex, fxY, ez));
       if (enemies.damage(best, run.lightningDamage, px, pz)) {
         kills++;
         onKill(ex, ez);
@@ -437,7 +442,7 @@ export class ExtraWeapons {
     boss.hitTest(px, pz, 2, run.lightningDamage);
 
     if (points.length > 1) {
-      const bolt = MeshBuilder.CreateLines('bolt', { points: jaggedPath(points) }, this.scene);
+      const bolt = MeshBuilder.CreateLines('bolt', { points: jaggedPath(points, fxY) }, this.scene);
       bolt.color = new Color3(0.75, 0.95, 1);
       bolt.isPickable = false;
       this.lightningFx.push({ mesh: bolt, t: 0 });
@@ -473,7 +478,7 @@ export class ExtraWeapons {
 }
 
 /** 將連鎖節點之間補上鋸齒中繼點，讓閃電更有電光感 */
-function jaggedPath(anchors: Vector3[]): Vector3[] {
+function jaggedPath(anchors: Vector3[], fxY: number): Vector3[] {
   const out: Vector3[] = [anchors[0]];
   const SEGS = 3;
   for (let k = 1; k < anchors.length; k++) {
@@ -488,7 +493,7 @@ function jaggedPath(anchors: Vector3[]): Vector3[] {
       const f = s / SEGS;
       if (s < SEGS) {
         const off = (Math.random() - 0.5) * 1.4;
-        out.push(new Vector3(a.x + dx * f + nx * off, FX_Y + Math.random() * 0.6, a.z + dz * f + nz * off));
+        out.push(new Vector3(a.x + dx * f + nx * off, fxY + Math.random() * 0.6, a.z + dz * f + nz * off));
       } else {
         out.push(new Vector3(b.x, b.y, b.z));
       }

@@ -87,7 +87,7 @@ export const UPGRADES: Upgrade[] = [
     apply: (s) => {
       s.orbitalCount += 1;
       s.orbitalDamage += 1;
-      s.orbitalRadius += 0.7;
+      s.orbitalRadius += 1.4;
     },
   },
   {
@@ -97,7 +97,7 @@ export const UPGRADES: Upgrade[] = [
     emoji: '🌀',
     maxLevel: 10,
     apply: (s) => {
-      s.auraRadius = s.auraRadius === 0 ? 4 : s.auraRadius + 0.8;
+      s.auraRadius = s.auraRadius === 0 ? 4 : s.auraRadius + 1.6;
       s.auraDamage += 1;
     },
   },

@@ -116,6 +116,8 @@ export class Boss {
   private readonly resolved = { x: 0, z: 0 };
   /** 受擊白光計時 */
   private hitFlash = 0;
+  /** 地形高度查詢（貼地用） */
+  private heightAt: (x: number, z: number) => number = () => 0;
 
   private skill: BossSkill = 'charge';
   private skillInterval = 5;
@@ -165,6 +167,10 @@ export class Boss {
     });
   }
 
+  setHeightFn(fn: (x: number, z: number) => number) {
+    this.heightAt = fn;
+  }
+
   spawn(index: number, playerX: number, playerZ: number) {
     const def = BOSS_DEFS[index];
     this.index = index;
@@ -203,7 +209,7 @@ export class Boss {
     this.currentMeshes = hasModel && this.modelMeshes[index].length ? this.modelMeshes[index] : [this.fallback];
     for (const m of this.currentMeshes) m.renderOverlay = false;
 
-    this.root.position.set(this.x, 0, this.z);
+    this.root.position.set(this.x, this.heightAt(this.x, this.z), this.z);
     this.root.setEnabled(true);
   }
 
@@ -246,6 +252,7 @@ export class Boss {
     this.z = this.resolved.z;
     this.root.position.x = this.x;
     this.root.position.z = this.z;
+    this.root.position.y = this.heightAt(this.x, this.z);
     this.root.rotation.y = Math.atan2(dx, dz);
   }
 
@@ -279,6 +286,7 @@ export class Boss {
       this.z = this.resolved.z;
       this.root.position.x = this.x;
       this.root.position.z = this.z;
+      this.root.position.y = this.heightAt(this.x, this.z);
       this.root.rotation.y = Math.atan2(this.dashX, this.dashZ);
       if (this.phaseT >= 0.45) this.phase = 'chase';
     }

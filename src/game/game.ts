@@ -12,11 +12,10 @@ import {
   TransformNode,
   Mesh,
   GlowLayer,
-  DynamicTexture,
-  Texture,
 } from '@babylonjs/core';
 import { loadModel, loadCharacter } from './model-loader';
 import type { AnimationGroup } from '@babylonjs/core';
+import { createTerrain } from './terrain';
 import { CONFIG } from './config';
 import { Input } from './input';
 import { SpatialGrid } from './spatial-grid';
@@ -128,10 +127,10 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   const sun = new DirectionalLight('sun', new Vector3(-0.5, -1, -0.3), scene);
   sun.intensity = 0.6;
 
-  createGround(scene);
+  const { heightAt } = createTerrain(scene);
   /** 實心障礙物（隨道具非同步載入逐步填入） */
   const obstacles: Obstacle[] = [];
-  void scatterProps(scene, obstacles);
+  void scatterProps(scene, obstacles, heightAt);
 
   /** 玩家根節點（移動此節點，視覺為其子物件：GLB 或 fallback 膠囊） */
   const player = new TransformNode('player', scene);
@@ -176,10 +175,12 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
 
   const grid = new SpatialGrid(CONFIG.gridCellSize);
   const enemies = new ZombieHorde(scene);
+  enemies.setHeightFn(heightAt);
   const weapon = new WeaponSystem(scene);
   const extras = new ExtraWeapons(scene);
   const gems = new GemSystem(scene);
   const boss = new Boss(scene);
+  boss.setHeightFn(heightAt);
   const hazards = new BossHazards(scene);
   const bloodDecals = new BloodDecals(scene);
 
@@ -218,8 +219,9 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   let state: GameState = 'running';
   let choices: Upgrade[] = [];
 
-  /** 跳躍狀態 */
+  /** 跳躍狀態（jumpY 為離地高度，疊加在地形高度之上） */
   let vy = 0;
+  let jumpY = 0;
   let grounded = true;
   let jumpRequested = false;
 
@@ -291,7 +293,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       const vis = kind === 'chest' ? createChestMesh(scene) : createHealMesh(scene);
       vis.parent = node;
     }
-    const baseY = kind === 'chest' ? 0.5 : 0.9;
+    const baseY = heightAt(x, z) + (kind === 'chest' ? 0.5 : 0.9);
     node.position.set(x, baseY, z);
     const healPct =
       kind === 'heal'
@@ -398,7 +400,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     if (rolled.length === 0) return; // 全滿級，略過暫停
     choices = rolled;
     state = 'levelup';
-    levelUpBurst(scene, new Vector3(player.position.x, 1, player.position.z));
+    levelUpBurst(scene, new Vector3(player.position.x, player.position.y + 1, player.position.z));
     sound.levelUp();
     pushStats();
   }
@@ -445,7 +447,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       }
     }
 
-    /** 跳躍：拋物線高度 */
+    /** 跳躍：地表高度之上的拋物線位移（jumpY 為離地高度） */
     if (jumpRequested && grounded) {
       vy = CONFIG.player.jump.strength;
       grounded = false;
@@ -453,18 +455,21 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     jumpRequested = false;
     if (!grounded) {
       vy -= CONFIG.player.jump.gravity * dt;
-      player.position.y += vy * dt;
-      if (player.position.y <= 0) {
-        player.position.y = 0;
+      jumpY += vy * dt;
+      if (jumpY <= 0) {
+        jumpY = 0;
         vy = 0;
         grounded = true;
       }
     }
-    const airborne = player.position.y > CONFIG.player.jump.dodgeHeight;
+    const airborne = jumpY > CONFIG.player.jump.dodgeHeight;
 
     const px = player.position.x;
     const pz = player.position.z;
-    camera.target.set(px, 1.2, pz);
+    /** 玩家貼地（地形高度）+ 跳躍離地高度 */
+    const groundY = heightAt(px, pz);
+    player.position.y = groundY + jumpY;
+    camera.target.set(px, groundY + 1.2, pz);
 
     /** 生成導演：隨時間升壓 */
     enemies.hpMul = 1 + time * CONFIG.director.hpGrowthPerSec;
@@ -490,19 +495,20 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
 
     const onKill = (x: number, z: number) => {
       gems.spawn(x, z);
-      enemyDeathBurst(scene, new Vector3(x, CONFIG.enemy.y, z));
-      bloodDecals.spawn(x, z);
+      const y = heightAt(x, z);
+      enemyDeathBurst(scene, new Vector3(x, y + CONFIG.enemy.y, z));
+      bloodDecals.spawn(x, z, y + 0.03);
       sound.hit();
     };
-    kills += weapon.update(dt, px, pz, enemies, boss, grid, eff, onKill);
-    kills += extras.update(dt, px, pz, enemies, boss, eff, onKill);
+    kills += weapon.update(dt, px, pz, enemies, boss, grid, eff, onKill, groundY);
+    kills += extras.update(dt, px, pz, enemies, boss, eff, onKill, groundY);
 
     /** 王被擊敗：噴出大量經驗 + 爆炸特效 */
     if (boss.justDied) {
       boss.justDied = false;
       kills += 1;
       bossDefeated += 1;
-      bossDeathBurst(scene, new Vector3(boss.x, 1.5, boss.z));
+      bossDeathBurst(scene, new Vector3(boss.x, heightAt(boss.x, boss.z) + 1.5, boss.z));
       sound.bossDown();
       for (let n = 0; n < CONFIG.boss.xpGems; n++) {
         const a = Math.random() * Math.PI * 2;
@@ -523,7 +529,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
 
     boss.update(dt, px, pz, obstacles, hazards);
     /** 王招式對玩家造成的傷害（彈幕／震波／毒池，無視騰空） */
-    const hazardDmg = hazards.update(dt, px, pz);
+    const hazardDmg = hazards.update(dt, px, pz, groundY);
     if (hazardDmg > 0) hp -= hazardDmg;
 
     /** 道具：每 15 秒生成寶箱與回血，並更新拾取 */
@@ -569,7 +575,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     hurtTimer -= dt;
     if ((hurt || hazardDmg > 0) && hurtTimer <= 0) {
       hurtTimer = 0.35;
-      hurtBurst(scene, new Vector3(px, 1, pz));
+      hurtBurst(scene, new Vector3(px, groundY + 1, pz));
       sound.hurt();
     }
 
@@ -649,12 +655,13 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       choices = [];
       state = 'running';
       vy = 0;
+      jumpY = 0;
       grounded = true;
       jumpRequested = false;
       playerMoving = false;
       playerWalk?.stop();
       playerIdle?.start(true);
-      player.position.set(0, 0, 0);
+      player.position.set(0, heightAt(0, 0), 0);
       enemies.reset(0, 0);
       gems.reset();
       weapon.reset();
@@ -720,110 +727,32 @@ function createHealMesh(scene: Scene): Mesh {
   return v;
 }
 
-function createGround(scene: Scene) {
-  const size = CONFIG.arenaHalf * 2.4;
-  const ground = MeshBuilder.CreateGround('ground', { width: size, height: size }, scene);
-
-  /** 程序生成末日柏油路面：深色底 + 石板接縫 + 顆粒 + 裂縫 + 血漬 + 黃線 */
-  const px = 512;
-  const tex = new DynamicTexture('ground-tex', px, scene, false);
-  const ctx = tex.getContext() as unknown as CanvasRenderingContext2D;
-
-  /** 底色（偏暗） */
-  ctx.fillStyle = '#262d39';
-  ctx.fillRect(0, 0, px, px);
-
-  /** 顆粒雜訊 */
-  for (let i = 0; i < 4000; i++) {
-    const x = Math.random() * px;
-    const y = Math.random() * px;
-    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.07)';
-    ctx.fillRect(x, y, 2, 2);
-  }
-
-  /** 石板接縫 */
-  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-  ctx.lineWidth = 6;
-  ctx.strokeRect(0, 0, px, px);
-  ctx.strokeStyle = 'rgba(150,160,180,0.10)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(6, 6, px - 12, px - 12);
-
-  /** 裂縫：數條鋸齒暗線 */
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-  for (let k = 0; k < 4; k++) {
-    let x = Math.random() * px;
-    let y = Math.random() * px;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    for (let s = 0; s < 6; s++) {
-      x += (Math.random() - 0.5) * 140;
-      y += (Math.random() - 0.5) * 140;
-      ctx.lineTo(x, y);
-    }
-    ctx.lineWidth = 1 + Math.random() * 2;
-    ctx.stroke();
-  }
-
-  /** 血漬：暗紅放射狀殘留 */
-  for (let k = 0; k < 3; k++) {
-    const bx = Math.random() * px;
-    const by = Math.random() * px;
-    const r = 24 + Math.random() * 50;
-    const g = ctx.createRadialGradient(bx, by, 0, bx, by, r);
-    g.addColorStop(0, 'rgba(85,12,12,0.6)');
-    g.addColorStop(1, 'rgba(85,12,12,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(bx, by, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  /** 褪色黃漆痕（路面標線殘跡） */
-  ctx.fillStyle = 'rgba(200,180,45,0.22)';
-  for (let k = 0; k < 4; k++) {
-    ctx.fillRect(Math.random() * px, Math.random() * px, 22 + Math.random() * 26, 5);
-  }
-
-  tex.update();
-  tex.wrapU = Texture.WRAP_ADDRESSMODE;
-  tex.wrapV = Texture.WRAP_ADDRESSMODE;
-  tex.uScale = 12;
-  tex.vScale = 12;
-
-  const material = new StandardMaterial('ground-material', scene);
-  material.diffuseTexture = tex;
-  material.specularColor = Color3.Black();
-  ground.material = material;
-  return ground;
-}
-
 /**
  * 散布殭屍城鎮道具（油桶、貨櫃、三角錐、水塔），提供移動參考與氛圍。
  * solid 者登記為障礙物（半徑），阻擋玩家與怪物；三角錐為純裝飾。
  */
-async function scatterProps(scene: Scene, obstacles: Obstacle[]) {
+async function scatterProps(scene: Scene, obstacles: Obstacle[], heightAt: (x: number, z: number) => number) {
   const half = CONFIG.arenaHalf;
   const props: { path: string; height: number; count: number; solid?: number }[] = [
-    { path: '/models/zombie/barrel.gltf', height: 1.4, count: 10, solid: 0.7 },
-    { path: '/models/zombie/container.gltf', height: 3, count: 4, solid: 2.2 },
-    { path: '/models/zombie/prop_container_red.gltf', height: 3, count: 3, solid: 2.2 },
-    { path: '/models/zombie/cone.gltf', height: 0.9, count: 10 },
-    { path: '/models/zombie/watertower.gltf', height: 8, count: 2, solid: 1.8 },
-    { path: '/models/zombie/prop_truck.gltf', height: 3.2, count: 3, solid: 3 },
-    { path: '/models/zombie/prop_couch.gltf', height: 1, count: 5, solid: 1.3 },
-    { path: '/models/zombie/prop_hydrant.gltf', height: 1.1, count: 6, solid: 0.5 },
-    { path: '/models/zombie/prop_barrier.gltf', height: 1, count: 7, solid: 1 },
-    { path: '/models/zombie/prop_wheels.gltf', height: 1, count: 5, solid: 0.7 },
-    { path: '/models/zombie/prop_pallet.gltf', height: 0.4, count: 8 },
-    { path: '/models/zombie/prop_trashbag.gltf', height: 0.8, count: 10 },
-    { path: '/models/zombie/prop_cinderblock.gltf', height: 0.4, count: 8 },
+    { path: '/models/zombie/barrel.gltf', height: 2.2, count: 10, solid: 1 },
+    { path: '/models/zombie/container.gltf', height: 4, count: 4, solid: 2.8 },
+    { path: '/models/zombie/prop_container_red.gltf', height: 4, count: 3, solid: 2.8 },
+    { path: '/models/zombie/cone.gltf', height: 1.5, count: 10 },
+    { path: '/models/zombie/watertower.gltf', height: 10, count: 2, solid: 2.2 },
+    { path: '/models/zombie/prop_truck.gltf', height: 4.5, count: 3, solid: 4 },
+    { path: '/models/zombie/prop_couch.gltf', height: 1.8, count: 5, solid: 2 },
+    { path: '/models/zombie/prop_hydrant.gltf', height: 1.8, count: 6, solid: 0.8 },
+    { path: '/models/zombie/prop_barrier.gltf', height: 1.6, count: 7, solid: 1.5 },
+    { path: '/models/zombie/prop_wheels.gltf', height: 1.6, count: 5, solid: 1 },
+    { path: '/models/zombie/prop_pallet.gltf', height: 0.9, count: 8 },
+    { path: '/models/zombie/prop_trashbag.gltf', height: 1.4, count: 10 },
+    { path: '/models/zombie/prop_cinderblock.gltf', height: 0.9, count: 8 },
   ];
 
   for (const p of props) {
     const base = await loadModel(scene, p.path, p.height);
     if (!base) continue;
-    const place = (node: { position: { x: number; z: number }; rotation: { y: number } }) => {
+    const place = (node: { position: { x: number; y: number; z: number }; rotation: { y: number } }) => {
       let x = 0;
       let z = 0;
       /** 避開玩家出生點（半徑 10 內）重試幾次 */
@@ -834,6 +763,7 @@ async function scatterProps(scene: Scene, obstacles: Obstacle[]) {
       }
       node.position.x = x;
       node.position.z = z;
+      node.position.y = heightAt(x, z);
       node.rotation.y = Math.random() * Math.PI * 2;
       if (p.solid) obstacles.push({ x, z, radius: p.solid });
     };

@@ -47,6 +47,8 @@ export class BossHazards {
 
   private shockMat: StandardMaterial;
   private poisonMat: StandardMaterial;
+  /** 玩家所在地形高度（招式貼地基準） */
+  private baseY = 0;
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -89,7 +91,7 @@ export class BossHazards {
       this.vx[i] = dirX * speed;
       this.vz[i] = dirZ * speed;
       this.life[i] = PROJ_LIFE;
-      this.projMesh[i].position.set(x, PROJ_Y, z);
+      this.projMesh[i].position.set(x, this.baseY + PROJ_Y, z);
       this.projMesh[i].setEnabled(true);
       return;
     }
@@ -117,7 +119,7 @@ export class BossHazards {
     const mesh = MeshBuilder.CreateTorus('shock', { diameter: 2, thickness: 0.5, tessellation: 40 }, this.scene);
     mesh.material = this.shockMat;
     mesh.isPickable = false;
-    mesh.position.set(x, 0.3, z);
+    mesh.position.set(x, this.baseY + 0.3, z);
     this.shocks.push({ mesh, t: 0, x, z, hit: false });
   }
 
@@ -127,12 +129,13 @@ export class BossHazards {
     mesh.rotation.x = Math.PI / 2;
     mesh.material = this.poisonMat;
     mesh.isPickable = false;
-    mesh.position.set(x, 0.06, z);
+    mesh.position.set(x, this.baseY + 0.06, z);
     this.poisons.push({ mesh, t: 0, x, z });
   }
 
   /** 每幀更新，回傳本幀對玩家造成的總傷害 */
-  update(dt: number, playerX: number, playerZ: number): number {
+  update(dt: number, playerX: number, playerZ: number, baseY: number): number {
+    this.baseY = baseY;
     let damage = 0;
 
     /** 彈幕 */
@@ -156,7 +159,7 @@ export class BossHazards {
         this.projMesh[i].setEnabled(false);
         continue;
       }
-      this.projMesh[i].position.set(this.px[i], PROJ_Y, this.pz[i]);
+      this.projMesh[i].position.set(this.px[i], this.baseY + PROJ_Y, this.pz[i]);
     }
 
     /** 震波：擴散環，掃過玩家造成一次傷害 */

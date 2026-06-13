@@ -1,5 +1,6 @@
 import { Scene, SceneLoader, TransformNode, AnimationGroup } from '@babylonjs/core';
 import '@babylonjs/loaders';
+// Draco 解碼器設定見 src/main.ts（進入點設定，全載入路徑共用）
 
 /**
  * 載入 GLB 模型並正規化大小：縮放到指定高度、底部對齊 y=0、停用拾取、播放 idle/walk 動畫。

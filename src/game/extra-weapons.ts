@@ -136,7 +136,7 @@ export class ExtraWeapons {
 
   /** 以斧頭模型替換球體 orb（各自包 holder 以便旋轉） */
   private async loadOrbWeapon(scene: Scene) {
-    const tmpl = await loadModel(scene, '/models/zombie/weapon_axe.gltf', 0.2);
+    const tmpl = await loadModel(scene, '/models/zombie/weapon_axe.glb', 0.2);
     if (!tmpl) return;
     tmpl.setEnabled(false);
     /** 套上自發光材質，讓 GlowLayer 泛光（橘紅） */
@@ -162,7 +162,7 @@ export class ExtraWeapons {
 
   /** 載入長矛模型，建立回力鏢池（載入失敗則用方塊） */
   private async loadBoomerangs(scene: Scene) {
-    const tmpl = await loadModel(scene, '/models/zombie/weapon_spear.gltf', 0.6);
+    const tmpl = await loadModel(scene, '/models/zombie/weapon_spear.glb', 0.6);
     for (let i = 0; i < MAX_BOOMERANGS; i++) {
       const holder = new TransformNode(`boomerang-${i}`, scene);
       if (tmpl) {

@@ -27,7 +27,7 @@ export const CHARACTERS: Character[] = [
     trait: '均衡｜起始攻擊：強化單發子彈',
     desc: '各項數值標準、無弱點，適合新手。起手傷害 +1，穩定單發點放，靠升級自由組合流派。',
     bodyColor: [0.3, 0.45, 0.6],
-    model: '/models/zombie/survivor_matt_armed.gltf',
+    model: '/models/zombie/survivor_matt_armed.glb',
     apply: (s) => {
       s.damage += 1;
     },
@@ -40,7 +40,7 @@ export const CHARACTERS: Character[] = [
     trait: '高速脆皮｜起始攻擊：三連發散射',
     desc: '移速 +20%、生命 −25。開局子彈一次噴三發扇形散彈，近距離火力強，但血薄要靠走位。',
     bodyColor: [0.8, 0.4, 0.5],
-    model: '/models/zombie/survivor_lis_armed.gltf',
+    model: '/models/zombie/survivor_lis_armed.glb',
     apply: (s) => {
       s.moveSpeed *= 1.2;
       s.maxHp -= 25;
@@ -55,7 +55,7 @@ export const CHARACTERS: Character[] = [
     trait: '輸出爆發｜起始攻擊：極速連射',
     desc: '發射間隔 −45%、生命 −15。子彈如雨般極速連射，單體輸出爆裂，疊攻擊力後非常猛。',
     bodyColor: [0.85, 0.7, 0.3],
-    model: '/models/zombie/survivor_sam_armed.gltf',
+    model: '/models/zombie/survivor_sam_armed.glb',
     apply: (s) => {
       s.fireInterval *= 0.55;
       s.maxHp -= 15;
@@ -69,7 +69,7 @@ export const CHARACTERS: Character[] = [
     trait: '拾取廣｜起始攻擊：環繞飛斧',
     desc: '拾取範圍 +70%、經驗 +20%，升級最快。開局自帶一把環繞旋轉的飛斧近身保護。',
     bodyColor: [0.5, 0.6, 0.45],
-    model: '/models/zombie/survivor_shaun_armed.gltf',
+    model: '/models/zombie/survivor_shaun_armed.glb',
     apply: (s) => {
       s.pickupRadius *= 1.7;
       s.xpMultiplier *= 1.2;
@@ -84,7 +84,7 @@ export const CHARACTERS: Character[] = [
     trait: '機動忠犬｜起始攻擊：連鎖閃電',
     desc: '移速 +15%、射程 +15%，機動風箏流。開局定期釋放連鎖閃電，自動電擊並跳躍清怪。',
     bodyColor: [0.5, 0.35, 0.2],
-    model: '/models/zombie/char_shepherd.gltf',
+    model: '/models/zombie/char_shepherd.glb',
     apply: (s) => {
       s.moveSpeed *= 1.15;
       s.range *= 1.15;
@@ -99,7 +99,7 @@ export const CHARACTERS: Character[] = [
     trait: '肉盾｜起始攻擊：傷害光環',
     desc: '生命 +40、移速 −10%，超耐打。身上展開傷害光環，持續灼燒貼近的殭屍，適合衝進怪堆。',
     bodyColor: [0.8, 0.7, 0.5],
-    model: '/models/zombie/char_pug.gltf',
+    model: '/models/zombie/char_pug.glb',
     apply: (s) => {
       s.maxHp += 40;
       s.moveSpeed *= 0.9;
@@ -114,7 +114,7 @@ export const CHARACTERS: Character[] = [
     trait: '範圍轟炸｜起始攻擊：新星爆',
     desc: '開局即有定期向外擴張的新星爆，清群能力極強，適合站陣中央炸怪。',
     bodyColor: [0.8, 0.35, 0.4],
-    model: '/models/zombie/char_anne.gltf',
+    model: '/models/zombie/char_anne.glb',
     apply: (s) => {
       s.novaRadius = 6;
       s.novaDamage += 2;
@@ -128,7 +128,7 @@ export const CHARACTERS: Character[] = [
     trait: '暴擊爆發｜起始攻擊：高暴擊',
     desc: '30% 暴擊率開局，子彈常打出 2 倍傷害，單體爆發兇猛；疊攻擊力後更可怕。',
     bodyColor: [0.4, 0.55, 0.7],
-    model: '/models/zombie/char_mako.gltf',
+    model: '/models/zombie/char_mako.glb',
     apply: (s) => {
       s.critChance = 0.3;
       s.damage += 1;

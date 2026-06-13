@@ -104,7 +104,7 @@ function onStart() {
 /** 先顯示本機統計，抓到全球就覆蓋 */
 const stats = reactive<GlobalStats>(loadStats());
 
-/** 目前遊玩人數（每 20 秒輪詢；失敗則維持上次值/隱藏） */
+/** 目前遊玩人數（每 60 秒輪詢；失敗則維持上次值/隱藏） */
 const online = ref<number | null>(null);
 let onlineTimer: number | undefined;
 async function refreshOnline() {
@@ -114,7 +114,7 @@ async function refreshOnline() {
 
 onMounted(async () => {
   void refreshOnline();
-  onlineTimer = window.setInterval(refreshOnline, 20000);
+  onlineTimer = window.setInterval(refreshOnline, 60000);
   const global = await fetchStats();
   if (global) Object.assign(stats, global);
 });

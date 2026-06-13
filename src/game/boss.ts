@@ -28,7 +28,7 @@ interface BossDef {
 const BOSS_DEFS: BossDef[] = [
   {
     name: '巨胖殭屍',
-    model: '/models/zombie/zombie_chubby.gltf',
+    model: '/models/zombie/zombie_chubby.glb',
     radius: 6,
     speed: 6,
     contactDps: 32,
@@ -40,7 +40,7 @@ const BOSS_DEFS: BossDef[] = [
   },
   {
     name: '狂暴肋骨怪',
-    model: '/models/zombie/zombie_ribcage.gltf',
+    model: '/models/zombie/zombie_ribcage.glb',
     radius: 4.8,
     speed: 9,
     contactDps: 28,
@@ -52,7 +52,7 @@ const BOSS_DEFS: BossDef[] = [
   },
   {
     name: '斷臂巨怪',
-    model: '/models/zombie/zombie_arm.gltf',
+    model: '/models/zombie/zombie_arm.glb',
     radius: 6.4,
     speed: 5.5,
     contactDps: 34,
@@ -64,7 +64,7 @@ const BOSS_DEFS: BossDef[] = [
   },
   {
     name: '腐毒殭屍',
-    model: '/models/zombie/zombie_basic.gltf',
+    model: '/models/zombie/zombie_basic.glb',
     radius: 6,
     speed: 7,
     contactDps: 30,
@@ -76,7 +76,7 @@ const BOSS_DEFS: BossDef[] = [
   },
   {
     name: '海盜船長',
-    model: '/models/zombie/boss_captain.gltf',
+    model: '/models/zombie/boss_captain.glb',
     radius: 6,
     speed: 7,
     contactDps: 34,
@@ -88,7 +88,7 @@ const BOSS_DEFS: BossDef[] = [
   },
   {
     name: '巨鯊',
-    model: '/models/zombie/boss_shark.gltf',
+    model: '/models/zombie/boss_shark.glb',
     radius: 7,
     speed: 11,
     contactDps: 36,
@@ -100,7 +100,7 @@ const BOSS_DEFS: BossDef[] = [
   },
   {
     name: '深海觸手',
-    model: '/models/zombie/boss_tentacle.gltf',
+    model: '/models/zombie/boss_tentacle.glb',
     radius: 21,
     speed: 3,
     contactDps: 42,

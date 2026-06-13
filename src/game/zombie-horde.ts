@@ -21,22 +21,22 @@ const FIRE_RANGE = 26;
 const KEEP_DIST = 13;
 
 const ZOMBIE_TYPES: ZombieType[] = [
-  { path: '/models/zombie/zombie_basic.gltf', hp: 3, speed: 5.5, scale: 1 },
-  { path: '/models/zombie/zombie_ribcage.gltf', hp: 2, speed: 8, scale: 0.95 }, // 快速
-  { path: '/models/zombie/zombie_chubby.gltf', hp: 12, speed: 3.2, scale: 1.35 }, // 坦克
-  { path: '/models/zombie/zombie_arm.gltf', hp: 4, speed: 5, scale: 1 },
-  { path: '/models/zombie/zombie_skeleton.gltf', hp: 4, speed: 6, scale: 1 }, // 不死骷髏
-  { path: '/models/zombie/zombie_skeleton_headless.gltf', hp: 6, speed: 5, scale: 1, ranged: true }, // 無頭骷髏（遠程）
+  { path: '/models/zombie/zombie_basic.glb', hp: 3, speed: 5.5, scale: 1 },
+  { path: '/models/zombie/zombie_ribcage.glb', hp: 2, speed: 8, scale: 0.95 }, // 快速
+  { path: '/models/zombie/zombie_chubby.glb', hp: 12, speed: 3.2, scale: 1.35 }, // 坦克
+  { path: '/models/zombie/zombie_arm.glb', hp: 4, speed: 5, scale: 1 },
+  { path: '/models/zombie/zombie_skeleton.glb', hp: 4, speed: 6, scale: 1 }, // 不死骷髏
+  { path: '/models/zombie/zombie_skeleton_headless.glb', hp: 6, speed: 5, scale: 1, ranged: true }, // 無頭骷髏（遠程）
 ];
 
 /** 怪物圖鑑資訊（供選單顯示） */
 export const ZOMBIE_INFO = [
-  { name: '基本殭屍', role: '雜兵', desc: '數量最多、血量普通的基本殭屍，靠數量淹沒你。', model: '/models/zombie/zombie_basic.gltf' },
-  { name: '肋骨怪', role: '快速', desc: '移動速度極快、血量低，會迅速貼近，優先處理。', model: '/models/zombie/zombie_ribcage.gltf' },
-  { name: '胖殭屍', role: '坦克', desc: '血量厚、移動慢的肉盾，需要較多火力才打得倒。', model: '/models/zombie/zombie_chubby.gltf' },
-  { name: '斷臂殭屍', role: '一般', desc: '中規中矩的近戰殭屍，速度與血量都中等。', model: '/models/zombie/zombie_arm.gltf' },
-  { name: '骷髏兵', role: '不死', desc: '海盜骷髏，移動偏快、血量普通，成群出現。', model: '/models/zombie/zombie_skeleton.gltf' },
-  { name: '無頭骷髏', role: '遠程', desc: '保持距離朝你發射彈丸的不死射手，會被逼近時後退。', model: '/models/zombie/zombie_skeleton_headless.gltf' },
+  { name: '基本殭屍', role: '雜兵', desc: '數量最多、血量普通的基本殭屍，靠數量淹沒你。', model: '/models/zombie/zombie_basic.glb' },
+  { name: '肋骨怪', role: '快速', desc: '移動速度極快、血量低，會迅速貼近，優先處理。', model: '/models/zombie/zombie_ribcage.glb' },
+  { name: '胖殭屍', role: '坦克', desc: '血量厚、移動慢的肉盾，需要較多火力才打得倒。', model: '/models/zombie/zombie_chubby.glb' },
+  { name: '斷臂殭屍', role: '一般', desc: '中規中矩的近戰殭屍，速度與血量都中等。', model: '/models/zombie/zombie_arm.glb' },
+  { name: '骷髏兵', role: '不死', desc: '海盜骷髏，移動偏快、血量普通，成群出現。', model: '/models/zombie/zombie_skeleton.glb' },
+  { name: '無頭骷髏', role: '遠程', desc: '保持距離朝你發射彈丸的不死射手，會被逼近時後退。', model: '/models/zombie/zombie_skeleton_headless.glb' },
 ];
 
 const BASE_HEIGHT = 2.4;

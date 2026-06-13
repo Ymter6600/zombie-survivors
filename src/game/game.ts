@@ -17,6 +17,7 @@ import { loadModel, loadCharacter } from './model-loader';
 import type { AnimationGroup } from '@babylonjs/core';
 import { createTerrain } from './terrain';
 import { DIFFICULTIES, type Difficulty } from './difficulty';
+import { getQuality, type QualityId } from './quality';
 import { scatterGroundDecals, buildRoads } from './ground-decals';
 import { CONFIG } from './config';
 import { Input } from './input';
@@ -90,6 +91,8 @@ export interface GameOptions {
   goldMultiplier?: number;
   /** 難度設定 */
   difficulty?: Difficulty;
+  /** 畫質（預設高；只影響渲染成本，不影響玩法） */
+  quality?: QualityId;
 }
 
 export interface GameHandle {
@@ -102,6 +105,8 @@ export interface GameHandle {
   setXpDebug: (on: boolean) => void;
   setMuted: (on: boolean) => void;
   setMusicTrack: (i: number) => void;
+  /** 切換畫質（解析度/發光/霧即時生效；抗鋸齒於下次開局生效） */
+  setQuality: (id: QualityId) => void;
   getDebugParams: () => DebugParamView[];
   setDebugParam: (index: number, value: number) => void;
   getUpgradeStatus: () => UpgradeStatusView[];
@@ -127,7 +132,10 @@ export interface DebugParamView {
 }
 
 export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {}): GameHandle {
-  const engine = new Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
+  const quality = getQuality(options.quality ?? 'high');
+  const engine = new Engine(canvas, quality.antialias, { preserveDrawingBuffer: false, stencil: true });
+  /** 解析度降階：值越大越省（中=1.5、低=2）；高=1 滿解析度 */
+  engine.setHardwareScalingLevel(quality.hardwareScaling);
   sound.enable();
   /** 背景音樂依擊敗王數分段：0→暗潮, ≥2→獵殺, ≥4→肅殺, ≥6→狂亂（索引對應 TRACKS） */
   const stageTrack = (defeated: number): number => (defeated >= 6 ? 2 : defeated >= 4 ? 3 : defeated >= 2 ? 1 : 0);
@@ -139,13 +147,14 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
   scene.clearColor = new Color4(0.05, 0.07, 0.13, 1);
   /** 輝光層：讓發光材質（子彈、衛星、閃電、火花等）泛光更顯眼 */
   const glow = new GlowLayer('glow', scene);
-  glow.intensity = 0.8;
+  glow.intensity = quality.glow;
+  glow.isEnabled = quality.glow > 0;
   setGlowLayer(glow);
   /** 線性霧增加遠處深度感 */
   scene.fogMode = Scene.FOGMODE_LINEAR;
   scene.fogColor = new Color3(0.05, 0.07, 0.13);
   scene.fogStart = 55;
-  scene.fogEnd = 110;
+  scene.fogEnd = quality.fogEnd;
 
   const camera = new ArcRotateCamera('camera', -Math.PI / 2, Math.PI / 3.2, 50, Vector3.Zero(), scene);
   /** 開放使用者調整：拖曳旋轉、滾輪／雙指縮放（仍自動跟隨玩家目標點） */
@@ -253,7 +262,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
 
   /** 寶箱模型範本（非同步載入，spawn 時複製；未就緒則退回程序化方塊） */
   let chestTemplate: TransformNode | null = null;
-  void loadModel(scene, '/models/zombie/item_chest.gltf', 1.1).then((n) => {
+  void loadModel(scene, '/models/zombie/item_chest.glb', 1.1).then((n) => {
     if (n) {
       n.setEnabled(false);
       /** 套上自發光材質，讓 GlowLayer 泛光（金色） */
@@ -927,6 +936,14 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       musicTrackIdx = i;
       sound.setMusicTrack(i);
     },
+    setQuality(id: QualityId) {
+      const q = getQuality(id);
+      engine.setHardwareScalingLevel(q.hardwareScaling);
+      glow.intensity = q.glow;
+      glow.isEnabled = q.glow > 0;
+      scene.fogEnd = q.fogEnd;
+      /** 抗鋸齒需重建 Engine 才能改，於下次開局生效 */
+    },
     getDebugParams() {
       return debugSpec.map((p) => ({
         label: p.label,
@@ -1003,19 +1020,19 @@ function createHealMesh(scene: Scene): Mesh {
 async function scatterProps(scene: Scene, obstacles: Obstacle[], heightAt: (x: number, z: number) => number) {
   const half = CONFIG.arenaHalf;
   const props: { path: string; height: number; count: number; solid?: number }[] = [
-    { path: '/models/zombie/barrel.gltf', height: 2.2, count: 10, solid: 1 },
-    { path: '/models/zombie/container.gltf', height: 4, count: 4, solid: 2.8 },
-    { path: '/models/zombie/prop_container_red.gltf', height: 4, count: 3, solid: 2.8 },
-    { path: '/models/zombie/cone.gltf', height: 1.5, count: 10 },
-    { path: '/models/zombie/watertower.gltf', height: 10, count: 2, solid: 2.2 },
-    { path: '/models/zombie/prop_truck.gltf', height: 4.5, count: 3, solid: 4 },
-    { path: '/models/zombie/prop_couch.gltf', height: 1.8, count: 5, solid: 2 },
-    { path: '/models/zombie/prop_hydrant.gltf', height: 1.8, count: 6, solid: 0.8 },
-    { path: '/models/zombie/prop_barrier.gltf', height: 1.6, count: 7, solid: 1.5 },
-    { path: '/models/zombie/prop_wheels.gltf', height: 1.6, count: 5, solid: 1 },
-    { path: '/models/zombie/prop_pallet.gltf', height: 0.9, count: 8 },
-    { path: '/models/zombie/prop_trashbag.gltf', height: 1.4, count: 10 },
-    { path: '/models/zombie/prop_cinderblock.gltf', height: 0.9, count: 8 },
+    { path: '/models/zombie/barrel.glb', height: 2.2, count: 10, solid: 1 },
+    { path: '/models/zombie/container.glb', height: 4, count: 4, solid: 2.8 },
+    { path: '/models/zombie/prop_container_red.glb', height: 4, count: 3, solid: 2.8 },
+    { path: '/models/zombie/cone.glb', height: 1.5, count: 10 },
+    { path: '/models/zombie/watertower.glb', height: 10, count: 2, solid: 2.2 },
+    { path: '/models/zombie/prop_truck.glb', height: 4.5, count: 3, solid: 4 },
+    { path: '/models/zombie/prop_couch.glb', height: 1.8, count: 5, solid: 2 },
+    { path: '/models/zombie/prop_hydrant.glb', height: 1.8, count: 6, solid: 0.8 },
+    { path: '/models/zombie/prop_barrier.glb', height: 1.6, count: 7, solid: 1.5 },
+    { path: '/models/zombie/prop_wheels.glb', height: 1.6, count: 5, solid: 1 },
+    { path: '/models/zombie/prop_pallet.glb', height: 0.9, count: 8 },
+    { path: '/models/zombie/prop_trashbag.glb', height: 1.4, count: 10 },
+    { path: '/models/zombie/prop_cinderblock.glb', height: 0.9, count: 8 },
   ];
 
   for (const p of props) {

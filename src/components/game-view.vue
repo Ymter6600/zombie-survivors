@@ -13,12 +13,12 @@
         {{ muted ? '🔇' : '🔊' }}
       </button>
       <select
-        v-model.number="musicTrack"
-        @change="onMusicTrack"
-        title="背景音樂"
+        v-model="quality"
+        @change="onQuality"
+        title="畫質"
         class="h-9 rounded-full border-0 bg-black/40 px-2 text-xs text-white outline-none backdrop-blur-md transition hover:bg-black/60 sm:h-11 sm:px-3 sm:text-sm"
       >
-        <option v-for="(n, i) in trackNames" :key="i" :value="i" class="bg-zinc-900 text-white">🎵 {{ n }}</option>
+        <option v-for="q in qualities" :key="q.id" :value="q.id" class="bg-zinc-900 text-white">🎚 {{ q.name }}畫質</option>
       </select>
       <button
         class="flex h-9 w-9 items-center justify-center rounded-full sm:h-11 sm:w-11 bg-black/40 text-base text-white backdrop-blur-md sm:text-xl transition hover:bg-black/60 active:scale-95"
@@ -164,8 +164,8 @@ import {
   type DebugParamView,
   type UpgradeStatusView,
 } from '../game/game';
-import { sound } from '../game/sound';
 import { sendHeartbeat } from '../game/api';
+import { QUALITIES, type QualityId } from '../game/quality';
 import type { RunState } from '../game/upgrades';
 import type { Difficulty } from '../game/difficulty';
 import Hud from './hud.vue';
@@ -217,8 +217,9 @@ let game: GameHandle | undefined;
 const MUTE_KEY = 'animal-survivors:muted';
 const muted = ref(localStorage.getItem(MUTE_KEY) === '1');
 
-const trackNames = sound.musicTrackNames;
-const musicTrack = ref(0); // 隨擊敗王數自動切換，下拉同步顯示目前曲目
+const QUALITY_KEY = 'animal-survivors:quality';
+const qualities = QUALITIES;
+const quality = ref<QualityId>((localStorage.getItem(QUALITY_KEY) as QualityId) || 'high'); // 預設高，不因裝置自動降
 
 const showStats = ref(false);
 const upgradeStatus = ref<UpgradeStatusView[]>([]);
@@ -244,18 +245,18 @@ onMounted(() => {
     characterModel: props.characterModel,
     goldMultiplier: props.goldMultiplier,
     difficulty: props.difficulty,
+    quality: quality.value,
     onStats: (s) => {
       Object.assign(stats, s);
-      musicTrack.value = s.musicTrack; // 同步自動切歌後的下拉顯示
       if (showStats.value && game) upgradeStatus.value = game.getUpgradeStatus();
     },
     onGameOver: (r) => emit('gameover', r),
   });
   game.setMuted(muted.value);
 
-  /** 在線心跳：遊戲進行期間每 20 秒上報一次（首頁據此顯示遊玩人數） */
+  /** 在線心跳：遊戲進行期間每 60 秒上報一次（首頁據此顯示遊玩人數；online 視窗 90s） */
   void sendHeartbeat();
-  heartbeatTimer = window.setInterval(() => void sendHeartbeat(), 20000);
+  heartbeatTimer = window.setInterval(() => void sendHeartbeat(), 60000);
 });
 
 let heartbeatTimer: number | undefined;
@@ -287,8 +288,9 @@ function onToggleMute() {
   localStorage.setItem(MUTE_KEY, muted.value ? '1' : '0');
   game?.setMuted(muted.value);
 }
-function onMusicTrack() {
-  game?.setMusicTrack(musicTrack.value);
+function onQuality() {
+  localStorage.setItem(QUALITY_KEY, quality.value);
+  game?.setQuality(quality.value);
 }
 function onToggleStats() {
   showStats.value = !showStats.value;

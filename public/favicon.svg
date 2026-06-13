@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="36%" r="75%">
+      <stop offset="0%" stop-color="#16240f"/>
+      <stop offset="100%" stop-color="#070b06"/>
+    </radialGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ec24a"/>
+      <stop offset="100%" stop-color="#4c8a2c"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- 殭屍頭 -->
+  <path d="M20 14 q12 -6 24 0 q6 4 5 16 q-1 12 -6 18 q-3 4 -8 4 h-6 q-5 0 -8 -4 q-5 -6 -6 -18 q-1 -12 5 -16 Z" fill="url(#skin)" stroke="#2f5a1a" stroke-width="2"/>
+  <!-- 臉頰縫線 -->
+  <path d="M39 36 l0 9 M43 37 l0 9" stroke="#2f5a1a" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- 凹陷眼窩 + 病態瞳光 -->
+  <ellipse cx="26" cy="30" rx="6" ry="7" fill="#0b1407"/>
+  <ellipse cx="42" cy="31" rx="5.5" ry="6.5" fill="#0b1407"/>
+  <circle cx="27" cy="31" r="2.4" fill="#c7ff45"/>
+  <circle cx="42" cy="32" r="2.1" fill="#c7ff45"/>
+  <!-- 眉骨 -->
+  <path d="M20 24 l11 2 M48 25 l-9 2" stroke="#2f5a1a" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- 鋸齒嘴 -->
+  <path d="M22 48 l4 -3 l3 3 l3 -3 l3 3 l3 -3 l4 3 l-1 4 l-22 0 Z" fill="#0b1407"/>
+  <path d="M24 48 l2 3 M30 48 l1 4 M36 48 l1 4 M41 48 l-1 3" stroke="#7ec24a" stroke-width="1.1"/>
+  <!-- 血滴 -->
+  <path d="M30 52 q-1 6 1 8 q2 -2 1 -8 Z" fill="#c0241c"/>
+</svg>

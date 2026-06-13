@@ -4,6 +4,7 @@ import { loadModel } from './model-loader';
 import { Obstacle, resolveObstacles } from './obstacles';
 import { BossHazards } from './boss-hazards';
 import { hitSpark } from './effects';
+import { sound } from './sound';
 
 /** 王的招式種類 */
 type BossSkill = 'charge' | 'aimed' | 'shockwave' | 'poison' | 'radial';
@@ -322,6 +323,8 @@ export class Boss {
         this.dashZ = dz / len;
         this.phase = 'dash';
         this.phaseT = 0;
+        sound.bossSkill(); // 衝撞起步
+
       }
     } else {
       this.phaseT += dt;
@@ -339,6 +342,7 @@ export class Boss {
   }
 
   private fireSkill(px: number, pz: number, hazards: BossHazards) {
+    sound.bossSkill();
     switch (this.skill) {
       case 'aimed':
         hazards.aimedBarrage(this.x, this.z, px, pz, 4);

@@ -64,6 +64,8 @@ export interface GameStats {
   bossDefeated: number;
   bossTotal: number;
   goldEarned: number;
+  /** 目前背景音樂索引（隨進度自動切換，供下拉同步顯示） */
+  musicTrack: number;
 }
 
 export interface RunResult {
@@ -127,6 +129,10 @@ export interface DebugParamView {
 export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {}): GameHandle {
   const engine = new Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
   sound.enable();
+  /** 背景音樂依擊敗王數分段：0→暗潮, ≥2→獵殺, ≥4→肅殺, ≥6→狂亂（索引對應 TRACKS） */
+  const stageTrack = (defeated: number): number => (defeated >= 6 ? 2 : defeated >= 4 ? 3 : defeated >= 2 ? 1 : 0);
+  let musicTrackIdx = 0;
+  sound.setMusicTrack(musicTrackIdx);
   sound.startMusic();
 
   const scene = new Scene(engine);
@@ -430,6 +436,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     bossDefeated: 0,
     bossTotal: BOSS_COUNT,
     goldEarned: 0,
+    musicTrack: 0,
   };
 
   function pushStats() {
@@ -451,6 +458,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     stats.bossSkill = boss.skillName;
     stats.bossDefeated = bossDefeated;
     stats.goldEarned = goldEarned;
+    stats.musicTrack = musicTrackIdx;
     options.onStats?.(stats);
   }
 
@@ -567,26 +575,40 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
     if (!boss.active && bossCount < BOSS_COUNT && bossTimer >= CONFIG.boss.intervalSec) {
       bossTimer = 0;
       boss.spawn(bossCount, px, pz);
+      sound.bossSpawn();
       bossCount += 1;
     }
 
+    /** 本幀累積的吸血量，於下方依「每秒上限」結算（避免高擊殺率無限回血） */
+    let lifestealAccrued = 0;
     const onKill = (x: number, z: number) => {
       gems.spawn(x, z);
       const y = heightAt(x, z);
       enemyDeathBurst(scene, new Vector3(x, y + CONFIG.enemy.y, z));
       bloodDecals.spawn(x, z, y + 0.03);
-      /** 吸血 */
-      if (eff.lifestealOnKill > 0) hp = Math.min(run.maxHp, hp + eff.lifestealOnKill);
+      /** 吸血：先累積，稍後封頂結算 */
+      if (eff.lifestealOnKill > 0) lifestealAccrued += eff.lifestealOnKill;
       sound.hit();
     };
     kills += weapon.update(dt, px, pz, enemies, boss, grid, eff, onKill, groundY);
     kills += extras.update(dt, px, pz, enemies, boss, eff, onKill, groundY);
+    /** 吸血結算：每秒回血上限 = 1 + 1.6 × 每殺回血（與擊殺率脫鉤，殺再快也封頂） */
+    if (lifestealAccrued > 0 && hp > 0) {
+      const capPerSec = 1 + 1.6 * eff.lifestealOnKill;
+      hp = Math.min(run.maxHp, hp + Math.min(lifestealAccrued, capPerSec * dt));
+    }
 
     /** 王被擊敗：噴出大量經驗 + 爆炸特效 */
     if (boss.justDied) {
       boss.justDied = false;
       kills += 1;
       bossDefeated += 1;
+      /** 依進度自動切歌（手動下拉仍可在里程碑之間覆蓋） */
+      const nextTrack = stageTrack(bossDefeated);
+      if (nextTrack !== musicTrackIdx) {
+        musicTrackIdx = nextTrack;
+        sound.setMusicTrack(musicTrackIdx);
+      }
       bossDeathBurst(scene, new Vector3(boss.x, heightAt(boss.x, boss.z) + 1.5, boss.z));
       sound.bossDown();
       for (let n = 0; n < CONFIG.boss.xpGems; n++) {
@@ -902,6 +924,7 @@ export function createGame(canvas: HTMLCanvasElement, options: GameOptions = {})
       sound.setMuted(on);
     },
     setMusicTrack(i: number) {
+      musicTrackIdx = i;
       sound.setMusicTrack(i);
     },
     getDebugParams() {

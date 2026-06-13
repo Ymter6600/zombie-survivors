@@ -12,6 +12,14 @@
       >
         {{ muted ? '🔇' : '🔊' }}
       </button>
+      <select
+        v-model.number="musicTrack"
+        @change="onMusicTrack"
+        title="背景音樂"
+        class="h-9 rounded-full border-0 bg-black/40 px-2 text-xs text-white outline-none backdrop-blur-md transition hover:bg-black/60 sm:h-11 sm:px-3 sm:text-sm"
+      >
+        <option v-for="(n, i) in trackNames" :key="i" :value="i" class="bg-zinc-900 text-white">🎵 {{ n }}</option>
+      </select>
       <button
         class="flex h-9 w-9 items-center justify-center rounded-full sm:h-11 sm:w-11 bg-black/40 text-base text-white backdrop-blur-md sm:text-xl transition hover:bg-black/60 active:scale-95"
         @click="onTogglePause"
@@ -156,6 +164,7 @@ import {
   type DebugParamView,
   type UpgradeStatusView,
 } from '../game/game';
+import { sound } from '../game/sound';
 import type { RunState } from '../game/upgrades';
 import type { Difficulty } from '../game/difficulty';
 import Hud from './hud.vue';
@@ -198,6 +207,7 @@ const stats = reactive<GameStats>({
   bossDefeated: 0,
   bossTotal: 5,
   goldEarned: 0,
+  musicTrack: 0,
 });
 
 let game: GameHandle | undefined;
@@ -205,6 +215,9 @@ let game: GameHandle | undefined;
 
 const MUTE_KEY = 'animal-survivors:muted';
 const muted = ref(localStorage.getItem(MUTE_KEY) === '1');
+
+const trackNames = sound.musicTrackNames;
+const musicTrack = ref(0); // 隨擊敗王數自動切換，下拉同步顯示目前曲目
 
 const showStats = ref(false);
 const upgradeStatus = ref<UpgradeStatusView[]>([]);
@@ -232,6 +245,7 @@ onMounted(() => {
     difficulty: props.difficulty,
     onStats: (s) => {
       Object.assign(stats, s);
+      musicTrack.value = s.musicTrack; // 同步自動切歌後的下拉顯示
       if (showStats.value && game) upgradeStatus.value = game.getUpgradeStatus();
     },
     onGameOver: (r) => emit('gameover', r),
@@ -263,6 +277,9 @@ function onToggleMute() {
   muted.value = !muted.value;
   localStorage.setItem(MUTE_KEY, muted.value ? '1' : '0');
   game?.setMuted(muted.value);
+}
+function onMusicTrack() {
+  game?.setMusicTrack(musicTrack.value);
 }
 function onToggleStats() {
   showStats.value = !showStats.value;

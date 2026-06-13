@@ -71,8 +71,8 @@ let musicGain: GainNode | undefined;
 let musicTimer: ReturnType<typeof setTimeout> | undefined;
 let nextBarTime = 0;
 let bar = 0;
-/** 預設曲目：獵殺 */
-let currentTrack = 1;
+/** 預設曲目：暗潮（隨擊敗王數自動切換） */
+let currentTrack = 0;
 
 function musicNote(freq: number, type: OscillatorType, t: number, dur: number, gain: number, filterFreq?: number) {
   const c = ensure();
@@ -131,20 +131,37 @@ function trackHunt(t: number, bar: number) {
   }
 }
 
-/** 第三首「腐朽」：緩慢、不協和的詭異氛圍 */
-function trackCreepy(t: number, bar: number) {
-  const roots = [82.41, 87.31, 82.41, 77.78]; // E F E D#（半音蠕動）
+/** 「狂亂」：高速十六分音符、緊張驅動（追逐感） */
+function trackFrenzy(t: number, bar: number) {
+  const roots = [110, 98, 130.81, 116.54]; // A G C A#
   const root = roots[bar % roots.length];
-  musicNote(root * 2, 'sine', t, 2.8, 0.12);
-  musicNote(root * 2 * 1.06, 'sine', t, 2.8, 0.05); // 小二度拍頻，營造不安
-  musicNote(root, 'triangle', t, 1.0, 0.16, 500);
-  if (bar % 2 === 0) musicNote(root * 5, 'sine', t + 1.4, 1.2, 0.06);
+  const S = 0.1;
+  musicNote(root, 'sawtooth', t, 1.6, 0.07, 1300); // 持續低音鋪底
+  const mel = [4, 5, 4, 6, 4, 5, 8, 6, 4, 5, 4, 6, 8, 10, 8, 6];
+  for (let s = 0; s < 16; s++) {
+    if (s % 2 === 0) musicNote(root, 'square', t + s * S, 0.09, 0.16, 850); // 急促脈衝低音
+    musicNote(root * mel[s], 'triangle', t + s * S, 0.11, 0.09);
+  }
+}
+
+/** 「肅殺」：行軍式中速、沉重壓迫 */
+function trackGrim(t: number, bar: number) {
+  const roots = [73.42, 73.42, 82.41, 65.41]; // D D E C（低音行軍）
+  const root = roots[bar % roots.length];
+  const B = 0.4;
+  const mel = [4, 5, 6, 5];
+  for (let b = 0; b < 4; b++) {
+    musicNote(root, 'square', t + b * B, 0.18, 0.22, 420); // 沉重腳步
+    musicNote(root * mel[b], 'sawtooth', t + b * B, 0.34, 0.12, 950); // 陰暗旋律
+  }
+  if (bar % 2 === 1) musicNote(root * 8, 'sine', t + 1.2, 0.6, 0.06); // 高處不安泛音
 }
 
 const TRACKS: Track[] = [
-  { name: '暗潮', barDur: 2, build: trackDark },
-  { name: '獵殺', barDur: 1.2, build: trackHunt },
-  { name: '腐朽', barDur: 2.8, build: trackCreepy },
+  { name: '暗潮', barDur: 2, build: trackDark }, // 0
+  { name: '獵殺', barDur: 1.2, build: trackHunt }, // 1
+  { name: '狂亂', barDur: 1.6, build: trackFrenzy }, // 2
+  { name: '肅殺', barDur: 1.6, build: trackGrim }, // 3
 ];
 
 function scheduler() {
@@ -210,6 +227,20 @@ export const sound = {
   /** 玩家受擊 */
   hurt() {
     tone({ freq: 300, freqTo: 90, type: 'sawtooth', dur: 0.18, gain: 0.22 });
+  },
+  /** 王登場：威壓號角（基頻拉進可聽範圍，中頻層確保小喇叭聽得到） */
+  bossSpawn() {
+    tone({ freq: 165, freqTo: 110, type: 'sawtooth', dur: 1.0, gain: 0.42 }); // 主號角 E3→A2
+    tone({ freq: 247, freqTo: 165, type: 'square', dur: 0.9, gain: 0.22 }); // 不協和疊音增加壓迫
+    tone({ freq: 440, freqTo: 330, type: 'triangle', dur: 0.45, gain: 0.2, delay: 0.04 }); // 明亮中頻層
+    tone({ freq: 660, type: 'triangle', dur: 0.18, gain: 0.16, delay: 0.0 }); // 起頭的尖銳衝擊
+    noise(0.8, 0.3, 'lowpass', 900);
+  },
+  /** 王施放招式：吼叫 + 下掃（彈幕／衝撞／震波） */
+  bossSkill() {
+    tone({ freq: 760, freqTo: 180, type: 'sawtooth', dur: 0.3, gain: 0.3 });
+    tone({ freq: 380, freqTo: 150, type: 'square', dur: 0.3, gain: 0.2 });
+    noise(0.25, 0.26, 'bandpass', 1200);
   },
   /** 王被擊敗 */
   bossDown() {

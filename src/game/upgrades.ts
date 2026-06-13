@@ -206,10 +206,10 @@ export const UPGRADES: Upgrade[] = [
   {
     id: 'lifesteal',
     name: '吸血',
-    desc: '每擊殺一隻殭屍回復生命；已有則回更多',
+    desc: '擊殺殭屍回復生命（每秒回血有上限）；已有則上限提升',
     emoji: '🩸',
     maxLevel: 5,
-    apply: (s) => (s.lifestealOnKill += 1),
+    apply: (s) => (s.lifestealOnKill += 0.35),
   },
   {
     id: 'regen',
@@ -217,7 +217,7 @@ export const UPGRADES: Upgrade[] = [
     desc: '每秒回復生命；已有則回更多',
     emoji: '❤️‍🩹',
     maxLevel: 5,
-    apply: (s) => (s.hpRegen += 1.5),
+    apply: (s) => (s.hpRegen += 0.7),
   },
   {
     id: 'armor',

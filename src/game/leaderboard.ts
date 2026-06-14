@@ -76,16 +76,20 @@ export function recordStats(time: number, kills: number): GlobalStats {
   return s;
 }
 
-/** 新增一筆並回傳更新後（依存活時間遞減、取前 MAX）的排行榜 */
+/**
+ * 新增一筆並回傳更新後的本機排行榜。
+ * 為支援兩張子榜，分別保留：破關者取「最快」前 MAX、未破關者取「最久」前 MAX，再合併。
+ */
 export function addRecord(record: RunRecord): RunRecord[] {
   const list = loadRecords();
   list.push(record);
-  list.sort((a, b) => b.time - a.time);
-  const trimmed = list.slice(0, MAX);
+  const cleared = list.filter((r) => r.won).sort((a, b) => a.time - b.time).slice(0, MAX); // 最快破關
+  const survival = list.filter((r) => !r.won).sort((a, b) => b.time - a.time).slice(0, MAX); // 最久存活
+  const merged = [...cleared, ...survival];
   try {
-    localStorage.setItem(KEY, JSON.stringify(trimmed));
+    localStorage.setItem(KEY, JSON.stringify(merged));
   } catch {
     /* 忽略寫入失敗 */
   }
-  return trimmed;
+  return merged;
 }

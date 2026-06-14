@@ -12,22 +12,31 @@ interface RunRow {
   created_at: number;
 }
 
-/** GET /api/leaderboard?limit=10&difficulty=hard — 依存活時間取全球前 N（可選難度過濾） */
+/**
+ * GET /api/leaderboard?limit=10&difficulty=hard&mode=cleared
+ * 兩張子榜：
+ *  - mode=cleared  → 破關榜：只取 won=1，依破關時間「升冪」（越快越前面）
+ *  - mode=survival → 生存榜（預設）：只取 won=0，依存活時間「降冪」（活越久越前面）
+ * 可選難度過濾。
+ */
 export const onRequestGet = async ({ request, env }: FnContext): Promise<Response> => {
   const url = new URL(request.url);
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 10, 1), 50);
   const difficulty = url.searchParams.get('difficulty');
+  const cleared = url.searchParams.get('mode') === 'cleared';
   try {
-    const stmt = difficulty
-      ? env.DB
-          .prepare(
-            'SELECT name,character,time,kills,level,gold,won,difficulty,created_at FROM runs WHERE difficulty=? ORDER BY time DESC LIMIT ?',
-          )
-          .bind(difficulty, limit)
-      : env.DB
-          .prepare('SELECT name,character,time,kills,level,gold,won,difficulty,created_at FROM runs ORDER BY time DESC LIMIT ?')
-          .bind(limit);
-    const { results } = await stmt.all<RunRow>();
+    const conds = ['won = ?'];
+    const binds: unknown[] = [cleared ? 1 : 0];
+    if (difficulty) {
+      conds.push('difficulty = ?');
+      binds.push(difficulty);
+    }
+    const order = cleared ? 'ASC' : 'DESC';
+    binds.push(limit);
+    const sql = `SELECT name,character,time,kills,level,gold,won,difficulty,created_at FROM runs WHERE ${conds.join(
+      ' AND ',
+    )} ORDER BY time ${order} LIMIT ?`;
+    const { results } = await env.DB.prepare(sql).bind(...binds).all<RunRow>();
     const list = results.map((r) => ({
       name: r.name,
       character: r.character,

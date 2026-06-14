@@ -37,11 +37,15 @@ export async function submitRun(run: RunSubmit): Promise<void> {
   }
 }
 
-/** 取全球排行榜；可選難度過濾；失敗回傳 null */
-export async function fetchLeaderboard(limit = 10, difficulty?: string): Promise<RunRecord[] | null> {
+/** 取全球排行榜；mode=cleared 破關榜（最快）/survival 生存榜（最久）；可選難度過濾；失敗回傳 null */
+export async function fetchLeaderboard(
+  limit = 10,
+  difficulty?: string,
+  mode: 'cleared' | 'survival' = 'survival',
+): Promise<RunRecord[] | null> {
   try {
     const q = difficulty ? `&difficulty=${encodeURIComponent(difficulty)}` : '';
-    const res = await fetch(`${BASE}/leaderboard?limit=${limit}${q}`);
+    const res = await fetch(`${BASE}/leaderboard?limit=${limit}&mode=${mode}${q}`);
     if (!res.ok) return null;
     return (await res.json()) as RunRecord[];
   } catch {

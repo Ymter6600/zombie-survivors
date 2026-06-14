@@ -19,6 +19,21 @@
         </span>
       </div>
 
+      <!-- 子榜切換 -->
+      <div class="flex gap-2">
+        <button
+          v-for="m in modes"
+          :key="m.id"
+          class="flex-1 rounded-full px-3 py-2 text-sm font-black backdrop-blur-md transition active:scale-95"
+          :class="mode === m.id ? 'bg-lime-400 text-black' : 'bg-black/40 text-white/70 hover:bg-black/60'"
+          @click="selectMode(m.id)"
+        >
+          {{ m.label }}
+        </button>
+      </div>
+
+      <p class="-mt-1 text-center text-xs text-white/45">{{ modeHint }}</p>
+
       <!-- 難度分頁 -->
       <div class="flex flex-wrap gap-2">
         <button
@@ -33,14 +48,14 @@
       </div>
 
       <div v-if="records.length === 0" class="rounded-2xl bg-white/5 p-8 text-center text-white/60">
-        此難度尚無紀錄，快去拚一場！
+        {{ emptyHint }}
       </div>
 
       <div v-else class="overflow-hidden rounded-2xl bg-black/40 backdrop-blur-md ring-1 ring-white/10">
         <div class="grid grid-cols-[2.5rem_1fr_4.5rem_3.5rem_3rem] gap-2 border-b border-white/10 px-4 py-2 text-xs font-black text-white/50">
           <span>#</span>
           <span>玩家</span>
-          <span class="text-right">存活</span>
+          <span class="text-right">{{ mode === 'cleared' ? '破關' : '存活' }}</span>
           <span class="text-right">擊殺</span>
           <span class="text-right">等級</span>
         </div>
@@ -57,9 +72,8 @@
             <span v-if="selected === ''" class="ml-1 text-[0.62rem]" :style="{ color: diffColor(r.difficulty) }">
               {{ diffLabel(r.difficulty) }}
             </span>
-            <span v-if="r.won" class="ml-1 rounded bg-amber-400/90 px-1 text-[0.6rem] font-black text-black">破關</span>
           </span>
-          <span class="text-right font-mono">{{ timeText(r.time) }}</span>
+          <span class="text-right font-mono" :class="mode === 'cleared' ? 'text-amber-300' : ''">{{ timeText(r.time) }}</span>
           <span class="text-right">{{ r.kills }}</span>
           <span class="text-right">{{ r.level }}</span>
         </div>
@@ -69,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import BackgroundPolygons from './background-polygons.vue';
 import { loadRecords, type RunRecord } from '../game/leaderboard';
 import { fetchLeaderboard } from '../game/api';
@@ -77,21 +91,43 @@ import { DIFFICULTIES, getDifficulty } from '../game/difficulty';
 
 const emit = defineEmits<{ (e: 'back'): void }>();
 
+type Mode = 'cleared' | 'survival';
+const modes: { id: Mode; label: string }[] = [
+  { id: 'cleared', label: '🏆 破關榜' },
+  { id: 'survival', label: '🛡️ 生存榜' },
+];
 const tabs = [{ id: '', label: '全部' }, ...DIFFICULTIES.map((d) => ({ id: d.id, label: `${d.emoji} ${d.name}` }))];
+
+const mode = ref<Mode>('cleared');
 const selected = ref('');
 const records = ref<RunRecord[]>([]);
 const isGlobal = ref(false);
 
+const modeHint = computed(() =>
+  mode.value === 'cleared' ? '擊敗全部 7 王者，比誰破關最快' : '未破關者，比誰活得最久',
+);
+const emptyHint = computed(() =>
+  mode.value === 'cleared' ? '此難度尚無人破關，來搶頭香！' : '此難度尚無紀錄，快去拚一場！',
+);
+
 async function refresh() {
   const diff = selected.value;
-  /** 先顯示本機（過濾難度），抓到全球榜就覆蓋 */
-  records.value = loadRecords().filter((r) => !diff || r.difficulty === diff);
+  const cleared = mode.value === 'cleared';
+  /** 先顯示本機（過濾難度＋破關狀態，依子榜排序），抓到全球榜就覆蓋 */
+  records.value = loadRecords()
+    .filter((r) => (!diff || r.difficulty === diff) && !!r.won === cleared)
+    .sort((a, b) => (cleared ? a.time - b.time : b.time - a.time))
+    .slice(0, 10);
   isGlobal.value = false;
-  const global = await fetchLeaderboard(10, diff || undefined);
+  const global = await fetchLeaderboard(10, diff || undefined, mode.value);
   if (global) {
     records.value = global;
     isGlobal.value = true;
   }
+}
+function selectMode(m: Mode) {
+  mode.value = m;
+  void refresh();
 }
 function selectTab(id: string) {
   selected.value = id;

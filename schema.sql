@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS runs (
   gold INTEGER,
   won INTEGER,
   difficulty TEXT DEFAULT 'easy',
+  cheated INTEGER DEFAULT 0,
   created_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_runs_time ON runs (time DESC);

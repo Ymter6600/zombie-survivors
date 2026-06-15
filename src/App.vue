@@ -78,25 +78,25 @@ function onStart(charId: string) {
 function onGameOver(result: RunResult) {
   meta.gold += result.gold;
   saveMeta(meta);
-  recordStats(result.time, result.kills);
-  /** 本局動過 debug → 不列入排行榜（本機 + 全球都跳過） */
-  if (result.cheated) return;
   const playerName = getPlayerName() || '倖存者';
   const character = getCharacter(lastCharId).name;
-  /** 本機紀錄（離線/快取） */
   const diffId = difficulty.value.id;
-  addRecord({
-    name: playerName,
-    character,
-    time: result.time,
-    kills: result.kills,
-    level: result.level,
-    gold: result.gold,
-    won: result.won,
-    difficulty: diffId,
-    at: Date.now(),
-  });
-  /** 上傳全球（失敗則忽略） */
+  /** 動過 debug 的局：不計本機累計、不進本機排行榜（後端則由 cheated 旗標標記＋排除） */
+  if (!result.cheated) {
+    recordStats(result.time, result.kills);
+    addRecord({
+      name: playerName,
+      character,
+      time: result.time,
+      kills: result.kills,
+      level: result.level,
+      gold: result.gold,
+      won: result.won,
+      difficulty: diffId,
+      at: Date.now(),
+    });
+  }
+  /** 一律上傳全球（帶 cheated 旗標，後端負責標記、排除排行榜、且不累加統計）；失敗則忽略 */
   void submitRun({
     name: playerName,
     character,
@@ -106,6 +106,7 @@ function onGameOver(result: RunResult) {
     gold: result.gold,
     won: result.won,
     difficulty: diffId,
+    cheated: result.cheated,
   });
 }
 

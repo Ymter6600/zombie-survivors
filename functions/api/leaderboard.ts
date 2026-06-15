@@ -25,7 +25,7 @@ export const onRequestGet = async ({ request, env }: FnContext): Promise<Respons
   const difficulty = url.searchParams.get('difficulty');
   const cleared = url.searchParams.get('mode') === 'cleared';
   try {
-    const conds = ['won = ?'];
+    const conds = ['won = ?', 'cheated = 0'];
     const binds: unknown[] = [cleared ? 1 : 0];
     if (difficulty) {
       conds.push('difficulty = ?');

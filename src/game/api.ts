@@ -22,6 +22,8 @@ export interface RunSubmit {
   gold: number;
   won: boolean;
   difficulty: string;
+  /** 本局是否動過 debug（後端據此標記、排除於排行榜） */
+  cheated: boolean;
 }
 
 /** 送出一場結算（fire-and-forget，離線/失敗則忽略） */

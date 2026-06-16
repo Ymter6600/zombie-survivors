@@ -113,6 +113,24 @@ export async function postMessage(name: string, text: string): Promise<boolean> 
   }
 }
 
+/** 每小時最高同時在線（時序）一筆 */
+export interface OnlineHourPoint {
+  /** floor(epochMs/3600000)，UTC 整點 bucket */
+  hour: number;
+  peak: number;
+}
+
+/** 取每小時線上人數歷史（最多 30 天）；失敗回傳 null */
+export async function fetchOnlineHistory(days = 7): Promise<OnlineHourPoint[] | null> {
+  try {
+    const res = await fetch(`${BASE}/online-history?days=${days}`);
+    if (!res.ok) return null;
+    return (await res.json()) as OnlineHourPoint[];
+  } catch {
+    return null;
+  }
+}
+
 /** 取全球累計統計；失敗回傳 null */
 export async function fetchStats(): Promise<GlobalStats | null> {
   try {

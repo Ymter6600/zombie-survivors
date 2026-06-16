@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS presence (
 );
 CREATE INDEX IF NOT EXISTS idx_presence_seen ON presence (last_seen);
 
+-- 每小時線上人數（時序）：hour = floor(epochMs/3600000)，peak = 該小時內最高同時在線
+CREATE TABLE IF NOT EXISTS online_hourly (
+  hour INTEGER PRIMARY KEY,
+  peak INTEGER NOT NULL DEFAULT 0
+);
+
 -- 留言板：全球留言
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

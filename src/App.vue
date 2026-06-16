@@ -5,11 +5,13 @@
     @leaderboard="screen = 'leaderboard'"
     @bestiary="screen = 'bestiary'"
     @messages="screen = 'messages'"
+    @online-history="screen = 'onlineHistory'"
   />
   <difficulty-screen v-else-if="screen === 'difficulty'" @select="onSelectDifficulty" @back="screen = 'landing'" />
   <leaderboard-screen v-else-if="screen === 'leaderboard'" @back="screen = 'landing'" />
   <bestiary-screen v-else-if="screen === 'bestiary'" @back="screen = 'landing'" />
   <message-board-screen v-else-if="screen === 'messages'" @back="screen = 'landing'" />
+  <online-history-screen v-else-if="screen === 'onlineHistory'" @back="screen = 'landing'" />
   <menu-screen
     v-else-if="screen === 'menu'"
     :meta="meta"
@@ -40,6 +42,7 @@ import LeaderboardScreen from './components/leaderboard-screen.vue';
 import BestiaryScreen from './components/bestiary-screen.vue';
 import DifficultyScreen from './components/difficulty-screen.vue';
 import MessageBoardScreen from './components/message-board-screen.vue';
+import OnlineHistoryScreen from './components/online-history-screen.vue';
 import { loadMeta, saveMeta, computeStartRunState, goldMultiplier, PERMA, permaCost } from './game/meta';
 import { getCharacter } from './game/characters';
 import { addRecord, recordStats, getPlayerName } from './game/leaderboard';
@@ -49,7 +52,9 @@ import type { RunState } from './game/upgrades';
 import type { RunResult } from './game/game';
 
 const meta = reactive(loadMeta());
-const screen = ref<'landing' | 'difficulty' | 'menu' | 'game' | 'leaderboard' | 'bestiary' | 'messages'>('landing');
+const screen = ref<
+  'landing' | 'difficulty' | 'menu' | 'game' | 'leaderboard' | 'bestiary' | 'messages' | 'onlineHistory'
+>('landing');
 
 const startRun = shallowRef<RunState>();
 const characterColor = ref<[number, number, number]>([1, 1, 1]);

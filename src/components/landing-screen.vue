@@ -57,6 +57,7 @@
         <button class="portal-btn" @click="emit('leaderboard')">🏆 排行榜</button>
         <button class="portal-btn" @click="emit('bestiary')">🧟 怪物圖鑑</button>
         <button class="portal-btn" @click="emit('messages')">💬 留言板</button>
+        <button class="portal-btn" @click="emit('onlineHistory')">📈 線上人數</button>
       </div>
 
       <!-- 累積統計（本機） -->
@@ -72,6 +73,10 @@
         <div class="rounded-2xl bg-black/30 px-4 py-2 text-center backdrop-blur-md sm:px-6">
           <div class="text-2xl font-black text-lime-300 sm:text-3xl">{{ stats.totalKills }}</div>
           <div class="text-xs text-white/55">累積擊殺</div>
+        </div>
+        <div class="rounded-2xl bg-black/30 px-4 py-2 text-center backdrop-blur-md sm:px-6">
+          <div class="text-2xl font-black text-lime-300 sm:text-3xl">{{ peak }}</div>
+          <div class="text-xs text-white/55">同時在線最高</div>
         </div>
       </div>
     </div>
@@ -89,6 +94,7 @@ const emit = defineEmits<{
   (e: 'leaderboard'): void;
   (e: 'bestiary'): void;
   (e: 'messages'): void;
+  (e: 'onlineHistory'): void;
 }>();
 
 const name = ref(getPlayerName());

